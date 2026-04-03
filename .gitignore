@@ -1,0 +1,24 @@
+# Binaries
+/proto2docs
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test output
+/tmp/
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated site output (users generate this themselves)
+docs/
