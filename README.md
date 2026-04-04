@@ -1,108 +1,148 @@
-# Protostar
+<p align="center">
+  <strong>proto2astro</strong>
+</p>
 
-Generate beautiful API documentation from `.proto` files. Built for [ConnectRPC](https://connectrpc.com/).
+<p align="center">
+  <code>.proto</code> files in, beautiful API docs out.
+</p>
 
-Protostar parses your Protocol Buffer definitions and generates a complete [Astro Starlight](https://starlight.astro.build/) documentation site with a two-column layout, auto-generated curl examples, and organized sidebar navigation. No `protoc` required.
+<p align="center">
+  <a href="https://github.com/sarathsp06/proto2astro/actions/workflows/ci.yml"><img src="https://github.com/sarathsp06/proto2astro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/sarathsp06/proto2astro/releases"><img src="https://img.shields.io/github/v/release/sarathsp06/proto2astro" alt="Release"></a>
+  <a href="https://pkg.go.dev/github.com/sarathsp06/proto2astro"><img src="https://pkg.go.dev/badge/github.com/sarathsp06/proto2astro.svg" alt="Go Reference"></a>
+  <a href="https://goreportcard.com/report/github.com/sarathsp06/proto2astro"><img src="https://goreportcard.com/badge/github.com/sarathsp06/proto2astro" alt="Go Report Card"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/sarathsp06/proto2astro" alt="License"></a>
+</p>
 
-**[Live example](https://sarathsp06.github.io/sparrow/reference/api/)** — generated from Sparrow's proto files.
-
----
-
-## Features
-
-| | |
-|---|---|
-| **Source-level parsing** | Parses `.proto` files directly using `emicklei/proto`. No `protoc` or code generation needed. |
-| **Two-column layout** | Request/response fields on the left, curl examples on the right. Inspired by Scalar. |
-| **ConnectRPC examples** | Curl examples use `POST` with `Content-Type: application/json` and correct service paths. |
-| **Package organization** | Multi-package protos get automatic sidebar grouping. |
-| **Rich comment extraction** | `Required`, `Deprecated:`, `Default:`, `Range:`, `Errors:`, `@example` annotations. |
-| **Enum documentation** | Dedicated pages for enums with all values documented. |
-| **Oneof / nested messages** | Oneof groups and qualified type names (`Outer.Inner`) are resolved and documented. |
-| **Streaming RPCs** | Detected and noted in the generated output. |
-| **Cross-package resolution** | Types referenced across proto packages are resolved correctly. |
-| **Cycle-safe** | Recursive and self-referencing message types are handled without infinite loops. |
-| **Buf workspace support** | Discover proto files from `buf.yaml` workspaces. |
-| **YAML overlay** | Customize descriptions, examples, ordering, and add custom pages without touching protos. |
-| **Fully customizable** | Edit Astro components, styles, and add your own pages directly in the generated site. |
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="https://sarathsp06.github.io/sparrow/reference/api/">Live Demo</a> &middot;
+  <a href="#configuration">Configuration</a> &middot;
+  <a href="#deployment">Deployment</a>
+</p>
 
 ---
+
+proto2astro generates a complete [Astro Starlight](https://starlight.astro.build/) documentation site from your [Protocol Buffer](https://protobuf.dev/) definitions. Two-column layout, auto-generated curl examples, organized sidebar — ready for [ConnectRPC](https://connectrpc.com/) services. No `protoc` needed.
+
+```
+  ┌─────────────┐         ┌──────────────┐         ┌─────────────────────┐
+  │             │         │              │         │                     │
+  │  .proto     │────────▶│  proto2astro  │────────▶│  Static docs site   │
+  │  files      │         │              │         │  (Astro Starlight)  │
+  │             │         │              │         │                     │
+  └─────────────┘         └──────────────┘         └─────────────────────┘
+                                                     ▲
+                                                     │
+                                                   Deploy to
+                                               GitHub Pages,
+                                              Netlify, Vercel,
+                                              or any static host
+```
+
+**See it in action:** The [Sparrow API Reference](https://sarathsp06.github.io/sparrow/reference/api/) is generated entirely by proto2astro.
+
+## Highlights
+
+- **Zero `protoc`** — parses `.proto` source files directly, no compilation step
+- **Scalar-inspired two-column layout** — fields on the left, curl examples on the right
+- **ConnectRPC-native** — curl examples use HTTP POST + JSON with correct service paths
+- **Just works with Buf** — discovers protos from `buf.yaml` workspaces automatically
+- **Rich proto comments** — extracts `Required`, `Deprecated:`, `Default:`, `Range:`, `Errors:`, `@example`
+- **Full site lifecycle** — `init` / `generate` / `install` / `build` / `dev` / `preview`
+- **Your site, your rules** — components, styles, and pages are fully customizable
 
 ## Quick Start
 
-### 1. Install
+Install and generate a documentation site in under a minute:
 
 ```sh
+# Install
 go install github.com/sarathsp06/proto2astro/cmd/proto2astro@latest
-```
 
-Or download a pre-built binary from the [releases page](https://github.com/sarathsp06/proto2astro/releases) (macOS and Linux, arm64/amd64).
-
-### 2. Configure
-
-Create a `proto2astro.yaml` in your project root:
-
-```yaml
+# Create a config file
+cat > proto2astro.yaml <<EOF
 title: "My API"
-description: "API reference for My Service"
-
 proto:
   paths:
     - ./proto
+EOF
 
-out_dir: ./docs
+# Generate, install deps, build, and preview
+proto2astro generate
+proto2astro install
+proto2astro build
+proto2astro preview     # → http://localhost:4321
 ```
 
-### 3. Generate and build
+Your API docs are now at `docs/dist/`. Deploy them anywhere.
 
-```sh
-proto2astro generate    # parse protos, generate the site
-proto2astro install     # npm install (first time only)
-proto2astro build       # build static HTML to docs/dist/
-```
-
-### 4. Preview
-
-```sh
-proto2astro preview     # serve locally at http://localhost:4321
-```
-
-The static site is output to `docs/dist/` — ready to deploy anywhere.
+> Pre-built binaries for macOS and Linux (arm64/amd64) are available on the [releases page](https://github.com/sarathsp06/proto2astro/releases).
 
 ---
 
-## CLI Reference
+## How It Works
 
-All commands accept `-o` / `--out` to specify the site directory (default: `./docs`).
+```
+proto2astro generate
+```
 
-| Command | Description |
-|---------|-------------|
-| `proto2astro init [dir]` | Scaffold a new Astro Starlight project without generating API content. |
-| `proto2astro generate` | Parse proto files and generate the complete documentation site. |
-| `proto2astro install` | Run `npm install` in the generated site directory. |
-| `proto2astro build` | Build the site into static HTML (`<site-dir>/dist/`). |
-| `proto2astro dev` | Start the Astro dev server with hot-reload at `localhost:4321`. |
-| `proto2astro preview` | Serve the built static site locally for review. |
+That single command:
 
-### Generate flags
+1. **Parses** all `.proto` files from the configured paths (source-level, using [`emicklei/proto`](https://github.com/emicklei/proto))
+2. **Resolves** cross-package types, nested messages, oneofs, and self-referencing structures
+3. **Generates** TypeScript data files + MDX pages + `astro.config.mjs` with a dynamic sidebar
+4. **Scaffolds** the Astro Starlight project if it doesn't exist yet
 
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `--config` | `-c` | `proto2astro.yaml` | Config file path |
-| `--proto` | `-p` | *(from config)* | Proto file or directory (overrides config) |
-| `--out` | `-o` | *(from config)* | Output directory (overrides config) |
-| `--buf-workspace` | | *(from config)* | Buf workspace root (overrides config) |
+The result is a standard Astro project. Run `proto2astro build` and you get static HTML.
 
-### Typical workflow
+### What proto2astro understands
+
+| Proto feature | How it's documented |
+|---|---|
+| Services & RPCs | Dedicated page per service, with all RPCs |
+| Request / Response messages | Field tables with types, descriptions, constraints |
+| Enums | Dedicated pages with all values |
+| Nested messages | Qualified names (`Outer.Inner`) resolved and linked |
+| Oneof groups | Documented with group metadata |
+| Streaming RPCs | Marked as client/server/bidi stream |
+| Cross-package references | Resolved and linked across proto packages |
+| Recursive types | Handled without infinite loops |
+
+---
+
+## CLI
+
+All commands accept `-o` / `--out` to set the site directory (default: `./docs`).
+
+```sh
+proto2astro init [dir]       # Scaffold the Astro project (no API content)
+proto2astro generate         # Parse protos → generate docs
+proto2astro install          # npm install
+proto2astro build            # Build static HTML → <site>/dist/
+proto2astro dev              # Dev server with hot-reload (localhost:4321)
+proto2astro preview          # Serve the built site locally
+```
+
+### Generate options
+
+```sh
+proto2astro generate                              # uses proto2astro.yaml
+proto2astro generate -c custom-config.yaml        # custom config
+proto2astro generate -p ./proto -o ./docs         # override paths
+proto2astro generate --buf-workspace ./            # discover from buf workspace
+```
+
+### Day-to-day workflow
 
 ```sh
 # First time
 proto2astro generate && proto2astro install && proto2astro build
 
-# After changing protos
+# After proto changes
 proto2astro generate && proto2astro build
 
-# Iterate on styling/components
+# Tweaking styles/components
 proto2astro dev
 ```
 
@@ -110,12 +150,25 @@ proto2astro dev
 
 ## Configuration
 
-All configuration lives in `proto2astro.yaml`.
+All config lives in a single `proto2astro.yaml`.
 
-### Full example
+<details>
+<summary><strong>Minimal config</strong></summary>
 
 ```yaml
-# ── Project metadata ─────────────────────────────
+title: "My API"
+proto:
+  paths:
+    - ./proto
+```
+
+</details>
+
+<details open>
+<summary><strong>Full config</strong></summary>
+
+```yaml
+# ── Project ──────────────────────────────────────
 title: "Payment API"
 description: "API reference for the Payment service"
 site: "https://example.github.io"       # base URL (enables sitemap)
@@ -130,7 +183,7 @@ social:
 
 # ── Proto input ──────────────────────────────────
 proto:
-  # Option A: direct paths
+  # Option A: file/directory paths
   paths:
     - ./proto/payment
     - ./proto/common/types.proto
@@ -150,7 +203,7 @@ service_order:
   - RefundService
 
 # ── Type handling ────────────────────────────────
-entity_types:
+entity_types:                            # don't flatten these into parent fields
   - PaymentIntent
   - Customer
 
@@ -178,7 +231,9 @@ custom_pages:
       Payment events are sent to your configured endpoint...
 ```
 
-### Field reference
+</details>
+
+### All fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -202,140 +257,119 @@ custom_pages:
 
 ## Proto Comment Conventions
 
-Protostar extracts structured information from your proto comments. All conventions are optional.
+Write comments in your `.proto` files and proto2astro picks them up automatically. All conventions are optional — plain `//` comments work as descriptions.
 
 ```protobuf
 // Create a new user account.
 // The email must be unique across the system.
+// Errors: ALREADY_EXISTS if the email is taken.
 rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+message CreateUserRequest {
+  // Required. The user's email address.
+  // @example "alice@example.com"
+  string email = 1;
+
+  // Display name. Default: "Anonymous".
+  string display_name = 2;
+
+  // Number of invites to pre-allocate. Range: 0-100.
+  int32 invite_count = 3;
+
+  // Deprecated: Use display_name instead.
+  string name = 4;
+}
 ```
 
-### Supported annotations
-
-| Pattern | Example | Effect |
-|---------|---------|--------|
-| `Required.` | `// Required. The user's email.` | Field marked as required |
-| `Deprecated:` | `// Deprecated: Use display_name instead.` | Field shown as deprecated |
-| `Default:` | `// Default: 20.` | Default value displayed |
-| `Range:` | `// Range: 1-100.` | Constraint displayed |
-| `Errors:` | `// Errors: NOT_FOUND if missing.` | Error codes listed on the RPC |
-| `@example` | `// @example "alice@example.com"` | Value used in curl examples |
-
-The `@example` value is JSON-parsed when possible (objects, arrays, numbers, booleans), otherwise treated as a string.
+| Annotation | What it does |
+|---|---|
+| `Required.` | Marks the field as required |
+| `Deprecated:` | Shows deprecation notice with reason |
+| `Default:` | Displays the default value |
+| `Range:` | Shows allowed range constraint |
+| `Errors:` | Lists error codes on the RPC (can appear multiple times) |
+| `@example` | Uses the value in generated curl examples (JSON-parsed when possible) |
 
 ---
 
-## Customizing the Generated Site
+## Customizing the Site
 
-The generated site is a standard Astro Starlight project. Protostar is designed to coexist with your manual changes.
+The generated site is a standard Astro Starlight project. proto2astro respects your changes.
 
-### What gets overwritten on each `generate` run
+### Safe to edit (written once, never overwritten)
 
-These files are regenerated every time. Do not edit them directly:
+```
+src/components/*.astro     ← layout, endpoint rendering, field tables
+src/styles/custom.css      ← all site styles
+src/content.config.ts      ← Astro content config
+src/data/api/types.ts      ← TypeScript type definitions
+package.json               ← add npm dependencies here
+tsconfig.json
+```
 
-- `astro.config.mjs` — sidebar and site configuration
-- `src/data/api/*.ts` — TypeScript data files from protos
-- `src/content/docs/reference/api/*.mdx` — service and enum pages
-- `src/content/docs/index.md` — landing page
-- `src/content/docs/guides/comment-guide.md` — comment conventions guide
-- Custom pages from `custom_pages` config
+### Regenerated on every `generate` run
 
-### What is safe to edit
+```
+astro.config.mjs           ← sidebar and site config
+src/data/api/*.ts          ← data files from protos
+src/content/docs/reference/api/*.mdx  ← service and enum pages
+src/content/docs/index.md  ← landing page
+```
 
-These are written once during initial scaffold and never touched again:
+> Use `proto2astro init --force` to reset scaffold files to defaults after upgrading.
 
-- `src/components/*.astro` — Astro components (layout, endpoint rendering)
-- `src/styles/custom.css` — site styles
-- `src/content.config.ts` — Astro content config
-- `src/data/api/types.ts` — TypeScript type definitions
-- `package.json`, `tsconfig.json`
-- Any new files you add
+### Components you can customize
 
-Use `proto2astro init --force` to reset scaffold files to defaults (e.g., after upgrading).
-
-### Components
-
-| Component | Purpose |
-|-----------|---------|
-| `ApiServicePage.astro` | Full service page layout (two-column, endpoint list) |
-| `ApiEndpoint.astro` | Single RPC endpoint section |
+| Component | Controls |
+|---|---|
+| `ApiServicePage.astro` | Full service page (two-column layout) |
+| `ApiEndpoint.astro` | Individual RPC endpoint |
 | `ApiRequest.astro` | Request fields table |
 | `ApiResponse.astro` | Response fields table |
-| `ErrorCodes.astro` | Error codes display |
-| `EnumPage.astro` | Enum values documentation |
+| `ErrorCodes.astro` | Error code display |
+| `EnumPage.astro` | Enum values page |
 
 ---
 
-## Building a Complete Documentation Site
+## Building a Full Documentation Site
 
-Protostar generates the **API Reference** section out of the box. To build a documentation site on par with the [Sparrow docs](https://sarathsp06.github.io/sparrow/), you'll want to add additional sections manually. Here's how.
+proto2astro generates the **API Reference** section. For a complete docs site like the [Sparrow documentation](https://sarathsp06.github.io/sparrow/), add your own sections around it.
 
-### Recommended site structure
-
-```
-Getting Started
-  ├── Installation
-  ├── Quickstart
-  ├── How It Works
-  └── Configuration
-
-API Reference              ← generated by protostar
-  ├── Overview
-  ├── ServiceA
-  ├── ServiceB
-  └── ...
-
-Reference
-  ├── Client Libraries
-  ├── Error Handling
-  └── Architecture
-
-Deployment
-  ├── Docker Compose
-  └── Kubernetes
-```
-
-### Adding sections
-
-Protostar generates pages under `src/content/docs/reference/api/`. To add other sections:
-
-**1. Create the markdown files:**
+### Recommended structure
 
 ```
 docs/src/content/docs/
 ├── getting-started/
-│   ├── installation.md
+│   ├── installation.md          ✍ you write these
 │   ├── quickstart.md
 │   ├── how-it-works.md
 │   └── configuration.md
 ├── reference/
-│   ├── api/                 ← generated by protostar
-│   ├── client-libraries.md
+│   ├── api/                     ← generated by proto2astro
+│   │   ├── index.md
+│   │   ├── payment-service.mdx
+│   │   └── ...
+│   ├── client-libraries.md      ✍ you write these
 │   ├── error-handling.md
 │   └── architecture.md
 └── deployment/
-    ├── docker-compose.md
+    ├── docker-compose.md        ✍ you write these
     └── kubernetes.md
 ```
 
-**2. Update the sidebar in `proto2astro.yaml`:**
+### Sidebar patching
 
-Since `astro.config.mjs` is regenerated each run, you cannot edit it directly. Instead, use `custom_pages` for simple pages, or — for full sidebar control — **override `astro.config.mjs` after generation**.
-
-A practical approach: create a post-generation script that patches the sidebar:
+Since `astro.config.mjs` is regenerated, use a wrapper script to add your custom sidebar sections:
 
 ```sh
 #!/bin/sh
-# generate-docs.sh
+# generate-docs.sh — generate + patch + build
 proto2astro generate
 
-# Patch the sidebar to include custom sections
 node -e "
 const fs = require('fs');
-let config = fs.readFileSync('docs/astro.config.mjs', 'utf8');
-
-const customSidebar = \`
-  sidebar: [
+let c = fs.readFileSync('docs/astro.config.mjs', 'utf8');
+c = c.replace('sidebar: [', \`sidebar: [
     {
       label: 'Getting Started',
       items: [
@@ -344,79 +378,46 @@ const customSidebar = \`
         { label: 'How It Works', slug: 'getting-started/how-it-works' },
         { label: 'Configuration', slug: 'getting-started/configuration' },
       ],
-    },
-\`;
-
-// Insert custom sections before the generated API Reference section
-config = config.replace('sidebar: [', customSidebar);
-fs.writeFileSync('docs/astro.config.mjs', config);
+    },\`);
+fs.writeFileSync('docs/astro.config.mjs', c);
 "
 
-proto2astro install
-proto2astro build
+proto2astro install && proto2astro build
 ```
 
-**3. Write content following Starlight conventions:**
+### Writing tips
 
-Each markdown file needs frontmatter:
+| Page | Approach |
+|---|---|
+| **Installation** | Lead with the easiest method (Docker/binary). Include prerequisites. |
+| **Quickstart** | Step-by-step curl walkthrough. End with "What just happened?" and "Next steps." |
+| **How It Works** | High-level architecture. Diagrams help. |
+| **Configuration** | Tables grouped by category. Cover every env var and config option. |
+| **Client Libraries** | Code examples in Go, JavaScript, Python. Use MDX tabs for multi-language. |
+| **Error Handling** | Document all error codes, response format, common errors. |
+| **Deployment** | Copy-paste-ready `docker-compose.yml` and Kubernetes manifests. |
 
-```markdown
----
-title: Installation
-description: How to install and set up the service.
----
-
-## Docker Compose (Recommended)
-
-The simplest way to get started...
-
-## Build from Source
-
-### Prerequisites
-
-- Go 1.21+
-- Node.js 18+
-- PostgreSQL 15+
-
-### Build
-
-\`\`\`sh
-make build
-\`\`\`
-```
-
-### Page writing tips
-
-Drawing from the Sparrow docs as a reference:
-
-- **Installation page** — lead with the easiest method (Docker, pre-built binary), then build-from-source. Include prerequisites.
-- **Quickstart page** — a step-by-step walkthrough using curl. Show a complete flow: create something, use it, verify the result. End with "What just happened?" and "Next steps."
-- **How It Works** — explain the system architecture. Diagrams help. Keep it high-level.
-- **Configuration** — list all environment variables or config options in a table. Group by category.
-- **Client Libraries** — show how to call the API from Go, JavaScript, Python, etc.
-- **Error Handling** — document error codes, response format, and common errors.
-- **Deployment pages** — provide copy-paste-ready configs (docker-compose.yml, Kubernetes manifests). Include an observability section if applicable.
-
-### Using MDX for richer pages
-
-Starlight supports MDX, which lets you use Astro components in your documentation. For example, to add tabbed content (e.g., showing both curl and SDK examples):
+### MDX tabs for multi-language examples
 
 ```mdx
----
-title: Quickstart
----
-
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <Tabs>
   <TabItem label="curl">
     ```sh
-    curl -X POST http://localhost:8080/my.Service/MyRpc ...
+    curl -X POST http://localhost:8080/my.Service/MyRpc \
+      -H "Content-Type: application/json" \
+      -d '{"name": "alice"}'
     ```
   </TabItem>
   <TabItem label="Go">
     ```go
-    client.MyRpc(ctx, connect.NewRequest(&pb.MyRequest{}))
+    res, err := client.MyRpc(ctx, connect.NewRequest(&pb.MyRequest{Name: "alice"}))
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```ts
+    const res = await client.myRpc({ name: "alice" });
     ```
   </TabItem>
 </Tabs>
@@ -426,7 +427,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Deployment
 
-The built site in `<out_dir>/dist/` is static HTML. Deploy it anywhere.
+The built site is static HTML. Deploy it anywhere.
 
 ### GitHub Pages
 
@@ -470,45 +471,46 @@ jobs:
 
 ```sh
 proto2astro generate && proto2astro install && proto2astro build
-# Deploy the contents of docs/dist/
+# Upload docs/dist/
 ```
 
 ---
 
 ## Development
 
-```sh
-make build       # build binary to bin/proto2astro
-make test        # run tests with -race
-make vet         # go vet
-make lint        # golangci-lint (install separately)
-make fmt         # gofmt + goimports
-make clean       # remove bin/ and dist/
-```
-
 ### Requirements
 
-- **Go 1.21+** (to build proto2astro)
-- **Node.js 18+** (to build the generated Astro site)
+- **Go 1.21+**
+- **Node.js 18+**
 - **macOS or Linux**
 
-### Building from source
+### Build from source
 
 ```sh
 git clone https://github.com/sarathsp06/proto2astro.git
 cd proto2astro
-make build       # binary: bin/proto2astro
-make install     # installs to $GOPATH/bin
+make build       # → bin/proto2astro
+make install     # → $GOPATH/bin/proto2astro
+```
+
+### Commands
+
+```sh
+make build       # Build the binary
+make test        # Run tests with -race
+make vet         # go vet
+make lint        # golangci-lint
+make fmt         # gofmt + goimports
+make clean       # Remove bin/ and dist/
 ```
 
 ### Releasing
 
-Releases use [GoReleaser](https://goreleaser.com/). Tag and push:
+Tag and push — CI handles the rest via [GoReleaser](https://goreleaser.com/):
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
-make release
 ```
 
 Produces binaries for macOS (arm64, amd64) and Linux (arm64, amd64).
@@ -517,4 +519,4 @@ Produces binaries for macOS (arm64, amd64) and Linux (arm64, amd64).
 
 ## License
 
-MIT
+[MIT](LICENSE)
