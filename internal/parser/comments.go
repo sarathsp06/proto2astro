@@ -165,23 +165,6 @@ func cleanErrorDescription(desc string) string {
 	return desc + "."
 }
 
-// cleanFieldDescription strips "Required. " prefix and annotation patterns.
-func cleanFieldDescription(desc string) string {
-	desc = strings.TrimSpace(desc)
-	desc = strings.TrimPrefix(desc, "Required. ")
-	desc = strings.TrimPrefix(desc, "Required ")
-
-	// Remove @example annotations from the visible description
-	desc = exampleRE.ReplaceAllString(desc, "")
-
-	// Remove Default: and Range: patterns from visible description
-	// (they're extracted separately)
-	desc = defaultRE.ReplaceAllString(desc, "")
-	desc = rangeRE.ReplaceAllString(desc, "")
-
-	return strings.TrimSpace(desc)
-}
-
 // hasDeprecatedOption checks proto field options for [deprecated = true].
 func hasDeprecatedOption(opts []*proto.Option) bool {
 	for _, opt := range opts {

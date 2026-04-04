@@ -116,13 +116,7 @@ func buildTSRPC(rpc parser.ProtoRPC, pkg *parser.ProtoPackage, cfg *config.Confi
 
 // toTSField converts a flatField to a TSField.
 func toTSField(f flatField) TSField {
-	return TSField{
-		Name:        f.Name,
-		Type:        f.Type,
-		Required:    f.Required,
-		Description: f.Description,
-		Example:     f.Example,
-	}
+	return TSField(f)
 }
 
 // buildTSEnum converts a parsed enum into a TSEnum struct.

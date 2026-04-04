@@ -424,21 +424,3 @@ func sortedEnumNames(pkg *parser.ProtoPackage) []string {
 	sort.Strings(names)
 	return names
 }
-
-// relativeImportPath computes the relative path from a page to a data file.
-// For pages in src/content/docs/reference/api/ importing from src/data/api/,
-// the relative path is always ../../../../data/api/
-func relativeImportPath() string {
-	return "../../../../data/api/"
-}
-
-// serviceDescription returns the first sentence of a description for use in sidebar labels.
-func serviceDescription(desc string) string {
-	if idx := strings.Index(desc, ". "); idx != -1 {
-		return desc[:idx+1]
-	}
-	if len(desc) > 100 {
-		return desc[:97] + "..."
-	}
-	return desc
-}
