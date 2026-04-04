@@ -14,6 +14,11 @@ The generated site features a Scalar-inspired two-column layout with auto-genera
 - **Rich comment extraction** — `Required`, `Deprecated:`, `Default:`, `Range:`, `Errors:`, `@example` annotations
 - **YAML overlay** — customize descriptions, examples, ordering, and add custom pages without touching protos
 - **Buf workspace support** — discover proto files from `buf.yaml` workspaces
+- **Oneof support** — fields inside `oneof` blocks are documented with group metadata
+- **Nested messages** — qualified type names (e.g., `Outer.Inner`) are resolved and documented
+- **Streaming RPCs** — detected and noted in the generated output
+- **Cross-package resolution** — types referenced across proto packages are resolved correctly
+- **Cycle-safe** — recursive/self-referencing message types are handled without infinite loops
 - **Customizable** — edit components, styles, and add your own pages directly in the generated site
 - **Full site lifecycle** — `init`, `generate`, `install`, `build`, `dev`, `preview` commands
 
@@ -34,8 +39,13 @@ Or build from source:
 ```sh
 git clone https://github.com/sarathsp06/proto2astro.git
 cd proto2astro
-go build -o proto2astro ./cmd/proto2astro
+make build          # binary goes to bin/proto2astro
+make install        # installs to $GOPATH/bin
 ```
+
+### From GitHub Releases
+
+Download pre-built binaries for macOS (arm64, amd64) and Linux (arm64, amd64) from the [releases page](https://github.com/sarathsp06/proto2astro/releases).
 
 ## Quick Start
 
@@ -521,6 +531,31 @@ jobs:
 proto2astro generate && proto2astro install && proto2astro build
 # Upload docs/dist/
 ```
+
+## Development
+
+```sh
+make help            # show all targets
+make build           # build binary to bin/proto2astro
+make test            # run tests with -race
+make vet             # go vet
+make lint            # golangci-lint (install separately)
+make fmt             # gofmt + goimports
+make clean           # remove bin/ and dist/
+make snapshot        # local goreleaser build (no publish)
+```
+
+### Releasing
+
+Releases are built with [goreleaser](https://goreleaser.com/). Tag a commit and push:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+make release         # or let CI handle it
+```
+
+This produces binaries for macOS (arm64, amd64) and Linux (arm64, amd64).
 
 ## License
 

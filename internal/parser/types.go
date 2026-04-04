@@ -14,8 +14,10 @@ type ProtoField struct {
 	MapKey      string
 	MapValue    string
 	IsOptional  bool
-	IsMessage   bool // whether the type references a message
-	IsEnum      bool // whether the type references an enum
+	IsOneof     bool   // whether this field is part of a oneof group
+	OneofGroup  string // name of the containing oneof group
+	IsMessage   bool   // whether the type references a message
+	IsEnum      bool   // whether the type references an enum
 	// Extended comment annotations
 	DefaultValue string // from "Default: VALUE" pattern
 	RangeMin     string // from "Range: MIN-MAX" pattern
@@ -31,11 +33,13 @@ type ProtoError struct {
 
 // ProtoRPC represents an RPC method in a service.
 type ProtoRPC struct {
-	Name         string
-	Description  string
-	RequestType  string
-	ResponseType string
-	Errors       []ProtoError
+	Name            string
+	Description     string
+	RequestType     string
+	ResponseType    string
+	StreamsRequest  bool // client-streaming or bidi
+	StreamsResponse bool // server-streaming or bidi
+	Errors          []ProtoError
 }
 
 // ProtoService represents a gRPC/ConnectRPC service.

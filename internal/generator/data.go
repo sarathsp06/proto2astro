@@ -194,6 +194,17 @@ type flatField struct {
 // flattenFields recursively flattens message fields using dot-notation.
 // Entity types (from config) are NOT flattened — they appear as a single field.
 func flattenFields(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTypes []string, prefix string, overlayFields map[string]config.OverlayField) []flatField {
+	return flattenFieldsWithSeen(msg, pkg, entityTypes, prefix, overlayFields, nil)
+}
+
+// flattenFieldsWithSeen is the recursive implementation with cycle detection.
+// The seen map tracks message type names currently being expanded to prevent
+// infinite recursion from self-referencing or mutually-recursive types.
+func flattenFieldsWithSeen(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTypes []string, prefix string, overlayFields map[string]config.OverlayField, seen map[string]bool) []flatField {
+	if seen == nil {
+		seen = make(map[string]bool)
+	}
+
 	var fields []flatField
 	for _, f := range msg.Fields {
 		if f.Deprecated {
@@ -210,48 +221,61 @@ func flattenFields(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTyp
 
 		// Should we flatten into this message?
 		if f.IsMessage && !f.IsMap && shouldFlatten(f.RawType, entityTypes) {
+			// Cycle detection: skip if we're already expanding this type
+			if seen[f.RawType] {
+				// Emit as a non-flattened reference to break the cycle
+				fields = append(fields, buildFlatField(f, fullName, ov))
+				continue
+			}
 			subMsg, ok := pkg.Messages[f.RawType]
 			if ok {
+				seen[f.RawType] = true
 				subPrefix := fullName
 				if f.IsRepeated {
 					subPrefix = fullName + "[]"
 				}
-				subFields := flattenFields(subMsg, pkg, entityTypes, subPrefix, overlayFields)
+				subFields := flattenFieldsWithSeen(subMsg, pkg, entityTypes, subPrefix, overlayFields, seen)
 				fields = append(fields, subFields...)
+				delete(seen, f.RawType) // allow this type in other branches
 				continue
 			}
 		}
 
-		desc := f.Description
-		if ov.Description != "" {
-			desc = ov.Description
-		}
-		desc = cleanDescription(desc)
-
-		required := f.Required
-		if ov.Required != nil {
-			required = *ov.Required
-		}
-
-		example := f.Example
-		if ov.Example != nil {
-			example = ov.Example
-		}
-
-		typeName := f.Type
-		if f.IsEnum {
-			typeName = f.RawType
-		}
-
-		fields = append(fields, flatField{
-			Name:        fullName,
-			Type:        typeName,
-			Required:    required,
-			Description: desc,
-			Example:     example,
-		})
+		fields = append(fields, buildFlatField(f, fullName, ov))
 	}
 	return fields
+}
+
+// buildFlatField constructs a flatField from a parser field and its overlay.
+func buildFlatField(f parser.ProtoField, fullName string, ov config.OverlayField) flatField {
+	desc := f.Description
+	if ov.Description != "" {
+		desc = ov.Description
+	}
+	desc = cleanDescription(desc)
+
+	required := f.Required
+	if ov.Required != nil {
+		required = *ov.Required
+	}
+
+	example := f.Example
+	if ov.Example != nil {
+		example = ov.Example
+	}
+
+	typeName := f.Type
+	if f.IsEnum {
+		typeName = f.RawType
+	}
+
+	return flatField{
+		Name:        fullName,
+		Type:        typeName,
+		Required:    required,
+		Description: desc,
+		Example:     example,
+	}
 }
 
 // shouldFlatten returns true if a type should be flattened (not in entity types list).

@@ -31,6 +31,15 @@ func Init(outDir string, force bool) error {
 func Generate(cfg *config.Config) error {
 	outDir := cfg.OutDir
 
+	// Validate config
+	warnings, err := cfg.Validate()
+	for _, w := range warnings {
+		fmt.Printf("  warning: %s\n", w)
+	}
+	if err != nil {
+		return err
+	}
+
 	// 1. Scaffold site (won't overwrite existing files unless forced)
 	fmt.Println("Ensuring site scaffold exists...")
 	if err := scaffoldSite(outDir, false); err != nil {
@@ -51,15 +60,28 @@ func Generate(cfg *config.Config) error {
 
 	// Summary
 	totalSvcs := 0
+	totalRPCs := 0
 	totalMsgs := 0
 	totalEnums := 0
+	streamingRPCs := 0
 	for _, pkg := range result.Packages {
 		totalSvcs += len(pkg.Services)
 		totalMsgs += len(pkg.Messages)
 		totalEnums += len(pkg.Enums)
+		for _, svc := range pkg.Services {
+			totalRPCs += len(svc.RPCs)
+			for _, rpc := range svc.RPCs {
+				if rpc.StreamsRequest || rpc.StreamsResponse {
+					streamingRPCs++
+				}
+			}
+		}
 	}
-	fmt.Printf("Found %d package(s), %d service(s), %d message(s), %d enum(s)\n",
-		len(result.Packages), totalSvcs, totalMsgs, totalEnums)
+	fmt.Printf("Found %d package(s), %d service(s), %d RPC(s), %d message(s), %d enum(s)\n",
+		len(result.Packages), totalSvcs, totalRPCs, totalMsgs, totalEnums)
+	if streamingRPCs > 0 {
+		fmt.Printf("  note: %d streaming RPC(s) detected (documented as unary)\n", streamingRPCs)
+	}
 
 	// 3. Generate TS data files
 	fmt.Println("Generating TypeScript data files...")
@@ -84,7 +106,10 @@ func Generate(cfg *config.Config) error {
 		return fmt.Errorf("generate custom pages: %w", err)
 	}
 
-	fmt.Println("Generation complete!")
+	// Final summary
+	pagesGenerated := totalSvcs + totalEnums + 1 /* index */ + 1 /* comment guide */ + 1 /* landing */
+	pagesGenerated += len(cfg.CustomPages)
+	fmt.Printf("\nGeneration complete: %d pages, %d data files\n", pagesGenerated, totalSvcs+totalEnums)
 	fmt.Printf("Output directory: %s\n", outDir)
 	fmt.Println("Next steps:")
 	fmt.Println("  1. proto2astro install     (install npm dependencies)")

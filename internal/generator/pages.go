@@ -36,9 +36,22 @@ type EnumPageData struct {
 	Package     string
 }
 
+// yamlString escapes a string for safe use inside double-quoted YAML values.
+// It escapes backslashes and double quotes.
+func yamlString(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	return s
+}
+
+// pageFuncMap provides template functions for page generation.
+var pageFuncMap = template.FuncMap{
+	"yaml": yamlString,
+}
+
 const serviceMDXTemplate = `---
-title: {{.ServiceName}}
-description: API reference for {{.ServiceName}}
+title: "{{yaml .ServiceName}}"
+description: "API reference for {{yaml .ServiceName}}"
 ---
 
 import ApiServicePage from '../../../../components/ApiServicePage.astro';
@@ -48,8 +61,8 @@ import service from '../../../../data/api/{{.Slug}}';
 `
 
 const enumMDXTemplate = `---
-title: "{{.EnumName}} (Enum)"
-description: Enum reference for {{.EnumName}}
+title: "{{yaml .EnumName}} (Enum)"
+description: "Enum reference for {{yaml .EnumName}}"
 ---
 
 import EnumPage from '../../../../components/EnumPage.astro';
@@ -59,8 +72,8 @@ import enumData from '../../../../data/api/{{.Slug}}';
 `
 
 const indexMDTemplate = `---
-title: {{.Title}}
-description: {{.Description}}
+title: "{{yaml .Title}}"
+description: "{{yaml .Description}}"
 ---
 
 Browse the full API reference below. Each service page includes request and
@@ -81,12 +94,12 @@ and descriptions.
 `
 
 const rootIndexMDXTemplate = `---
-title: "{{.Title}}"
-description: "{{.Description}}"
+title: "{{yaml .Title}}"
+description: "{{yaml .Description}}"
 template: splash
 hero:
-  title: "{{.Title}}"
-  tagline: "{{.Description}}"
+  title: "{{yaml .Title}}"
+  tagline: "{{yaml .Description}}"
   actions:
     - text: API Reference
       link: /reference/api/
@@ -320,7 +333,7 @@ func generatePages(result *parser.ParseResult, cfg *config.Config, outDir string
 
 // generateServiceMDX writes a single service MDX stub.
 func generateServiceMDX(data ServicePageData, docsDir string) error {
-	tmpl, err := template.New("service").Parse(serviceMDXTemplate)
+	tmpl, err := template.New("service").Funcs(pageFuncMap).Parse(serviceMDXTemplate)
 	if err != nil {
 		return fmt.Errorf("parse service template: %w", err)
 	}
@@ -337,7 +350,7 @@ func generateServiceMDX(data ServicePageData, docsDir string) error {
 
 // generateEnumMDX writes a single enum MDX stub.
 func generateEnumMDX(data EnumPageData, docsDir string) error {
-	tmpl, err := template.New("enum").Parse(enumMDXTemplate)
+	tmpl, err := template.New("enum").Funcs(pageFuncMap).Parse(enumMDXTemplate)
 	if err != nil {
 		return fmt.Errorf("parse enum template: %w", err)
 	}
@@ -354,7 +367,7 @@ func generateEnumMDX(data EnumPageData, docsDir string) error {
 
 // generateIndexPage writes the API reference index page.
 func generateIndexPage(services []ServicePageData, enums []EnumPageData, cfg *config.Config, docsDir string) error {
-	tmpl, err := template.New("index").Parse(indexMDTemplate)
+	tmpl, err := template.New("index").Funcs(pageFuncMap).Parse(indexMDTemplate)
 	if err != nil {
 		return fmt.Errorf("parse index template: %w", err)
 	}
@@ -378,7 +391,7 @@ func generateIndexPage(services []ServicePageData, enums []EnumPageData, cfg *co
 
 // generateRootIndex writes the site root landing page at src/content/docs/index.mdx.
 func generateRootIndex(cfg *config.Config, rootDocsDir string) error {
-	tmpl, err := template.New("root-index").Parse(rootIndexMDXTemplate)
+	tmpl, err := template.New("root-index").Funcs(pageFuncMap).Parse(rootIndexMDXTemplate)
 	if err != nil {
 		return fmt.Errorf("parse root index template: %w", err)
 	}

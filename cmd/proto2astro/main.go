@@ -12,13 +12,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "dev"
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
 func main() {
+	versionStr := fmt.Sprintf("%s (commit %s, built %s)", version, commit, date)
+
 	root := &cobra.Command{
 		Use:     "proto2astro",
 		Short:   "Generate Astro Starlight API docs from proto files",
-		Version: version,
+		Version: versionStr,
 	}
 
 	// ── init ──────────────────────────────────────────────

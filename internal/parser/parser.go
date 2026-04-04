@@ -31,10 +31,8 @@ func ParseFiles(paths []string) (*ParseResult, error) {
 		}
 	}
 
-	// Post-process: mark message/enum references on fields
-	for _, pkg := range result.Packages {
-		resolveFieldTypes(pkg)
-	}
+	// Post-process: mark message/enum references on fields (including cross-package)
+	resolveAllFieldTypes(result)
 
 	return result, nil
 }
@@ -79,11 +77,13 @@ func parseFile(path string, result *ParseResult) error {
 		}),
 	)
 
-	// First pass: collect messages and enums
+	// First pass: collect messages (including nested) and enums
 	proto.Walk(definition,
 		proto.WithMessage(func(m *proto.Message) {
 			msg := parseMessage(m)
 			pf.Messages[m.Name] = msg
+			// Collect nested messages and enums
+			collectNested(m, pf)
 		}),
 		proto.WithEnum(func(e *proto.Enum) {
 			en := parseEnum(e)
@@ -150,6 +150,13 @@ func parseMessage(m *proto.Message) *ProtoMessage {
 			msg.Fields = append(msg.Fields, parseNormalField(el))
 		case *proto.MapField:
 			msg.Fields = append(msg.Fields, parseMapField(el))
+		case *proto.Oneof:
+			for _, oe := range el.Elements {
+				if of, ok := oe.(*proto.OneOfField); ok {
+					f := parseOneofField(of, el.Name)
+					msg.Fields = append(msg.Fields, f)
+				}
+			}
 		}
 	}
 	return msg
@@ -225,11 +232,89 @@ func parseRPC(rpc *proto.RPC) ProtoRPC {
 	fullComment := extractComment(rpc.Comment)
 	desc, errors := splitRPCComment(fullComment)
 	return ProtoRPC{
-		Name:         rpc.Name,
-		Description:  desc,
-		RequestType:  rpc.RequestType,
-		ResponseType: rpc.ReturnsType,
-		Errors:       errors,
+		Name:            rpc.Name,
+		Description:     desc,
+		RequestType:     rpc.RequestType,
+		ResponseType:    rpc.ReturnsType,
+		StreamsRequest:  rpc.StreamsRequest,
+		StreamsResponse: rpc.StreamsReturns,
+		Errors:          errors,
+	}
+}
+
+// parseOneofField extracts a ProtoField from a oneof field.
+func parseOneofField(f *proto.OneOfField, groupName string) ProtoField {
+	field := ProtoField{
+		Name:       f.Name,
+		RawType:    f.Type,
+		IsOneof:    true,
+		OneofGroup: groupName,
+		IsOptional: true, // oneof fields are inherently optional
+	}
+	field.Description = extractComment(f.Comment)
+	if field.Description == "" {
+		field.Description = extractInlineComment(f.InlineComment)
+	}
+	field.Required = extractRequired(field.Description)
+	field.Deprecated = extractDeprecated(field.Description)
+	field.DefaultValue = extractDefault(field.Description)
+	field.RangeMin, field.RangeMax = extractRange(field.Description)
+	field.Example = extractExample(field.Description)
+	field.Type = mapProtoType(f.Type, false, false, "", "")
+	return field
+}
+
+// collectNested recursively collects nested message and enum definitions
+// from within a message. Nested types are stored with their parent-qualified
+// name (e.g. "Outer.Inner") to match how proto field types reference them.
+func collectNested(m *proto.Message, pf *ProtoFile) {
+	for _, el := range m.Elements {
+		switch e := el.(type) {
+		case *proto.Message:
+			qualifiedName := m.Name + "." + e.Name
+			msg := parseMessage(e)
+			msg.Name = qualifiedName
+			pf.Messages[qualifiedName] = msg
+			// Also store with short name for unqualified references
+			if _, exists := pf.Messages[e.Name]; !exists {
+				pf.Messages[e.Name] = msg
+			}
+			// Recurse into deeper nesting
+			collectNestedQualified(e, qualifiedName, pf)
+		case *proto.Enum:
+			qualifiedName := m.Name + "." + e.Name
+			en := parseEnum(e)
+			en.Name = qualifiedName
+			pf.Enums[qualifiedName] = en
+			if _, exists := pf.Enums[e.Name]; !exists {
+				pf.Enums[e.Name] = en
+			}
+		}
+	}
+}
+
+// collectNestedQualified is the recursive helper for deeply nested types.
+func collectNestedQualified(m *proto.Message, parentQualified string, pf *ProtoFile) {
+	for _, el := range m.Elements {
+		switch e := el.(type) {
+		case *proto.Message:
+			qualifiedName := parentQualified + "." + e.Name
+			msg := parseMessage(e)
+			msg.Name = qualifiedName
+			pf.Messages[qualifiedName] = msg
+			if _, exists := pf.Messages[e.Name]; !exists {
+				pf.Messages[e.Name] = msg
+			}
+			collectNestedQualified(e, qualifiedName, pf)
+		case *proto.Enum:
+			qualifiedName := parentQualified + "." + e.Name
+			en := parseEnum(e)
+			en.Name = qualifiedName
+			pf.Enums[qualifiedName] = en
+			if _, exists := pf.Enums[e.Name]; !exists {
+				pf.Enums[e.Name] = en
+			}
+		}
 	}
 }
 
