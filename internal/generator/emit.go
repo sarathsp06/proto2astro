@@ -1,5 +1,5 @@
 // Package generator produces a complete Astro Starlight documentation site
-// from parsed proto definitions and a proto2docs.yaml configuration.
+// from parsed proto definitions and a proto2astro.yaml configuration.
 package generator
 
 import (

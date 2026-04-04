@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sarathsp06/proto2docs/internal/config"
-	"github.com/sarathsp06/proto2docs/internal/parser"
+	"github.com/sarathsp06/proto2astro/internal/config"
+	"github.com/sarathsp06/proto2astro/internal/parser"
 )
 
 // generateDataFiles generates TypeScript data files (one per service + one per enum) in outDir/src/data/api/.

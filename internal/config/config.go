@@ -7,10 +7,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DefaultConfigFile is the default filename for proto2docs configuration.
-const DefaultConfigFile = "proto2docs.yaml"
+// DefaultConfigFile is the default filename for proto2astro configuration.
+const DefaultConfigFile = "proto2astro.yaml"
 
-// Load reads and parses a proto2docs.yaml configuration file.
+// Load reads and parses a proto2astro.yaml configuration file.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

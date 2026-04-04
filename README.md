@@ -1,8 +1,8 @@
-# proto2docs
+# proto2astro
 
 Generate a complete [Astro Starlight](https://starlight.astro.build/) API documentation site from `.proto` files — designed for [ConnectRPC](https://connectrpc.com/) services.
 
-The generated site features a Scalar-inspired two-column layout with auto-generated `curl` examples, organized by proto package. Run `proto2docs generate` and you get a fully buildable static site, ready for deployment.
+The generated site features a Scalar-inspired two-column layout with auto-generated `curl` examples, organized by proto package. Run `proto2astro generate` and you get a fully buildable static site, ready for deployment.
 
 ## Features
 
@@ -19,29 +19,29 @@ The generated site features a Scalar-inspired two-column layout with auto-genera
 
 ## Requirements
 
-- **Go 1.21+** (to build proto2docs)
+- **Go 1.21+** (to build proto2astro)
 - **Node.js 18+** (to build the generated Astro site)
 - **macOS or Linux**
 
 ## Installation
 
 ```sh
-go install github.com/sarathsp06/proto2docs/cmd/proto2docs@latest
+go install github.com/sarathsp06/proto2astro/cmd/proto2astro@latest
 ```
 
 Or build from source:
 
 ```sh
-git clone https://github.com/sarathsp06/proto2docs.git
-cd proto2docs
-go build -o proto2docs ./cmd/proto2docs
+git clone https://github.com/sarathsp06/proto2astro.git
+cd proto2astro
+go build -o proto2astro ./cmd/proto2astro
 ```
 
 ## Quick Start
 
 ```sh
 # 1. Create a config file
-cat > proto2docs.yaml <<EOF
+cat > proto2astro.yaml <<EOF
 title: "My API"
 description: "API reference for My Service"
 
@@ -53,14 +53,14 @@ out_dir: ./docs
 EOF
 
 # 2. Generate the documentation site
-proto2docs generate
+proto2astro generate
 
 # 3. Install dependencies and build
-proto2docs install
-proto2docs build
+proto2astro install
+proto2astro build
 
 # 4. Preview the result
-proto2docs preview
+proto2astro preview
 ```
 
 The static site is output to `./docs/dist/` — ready to deploy to any static host.
@@ -71,21 +71,21 @@ The static site is output to `./docs/dist/` — ready to deploy to any static ho
 
 Every command that operates on the generated site accepts `-o` / `--out` to specify the site directory. The default is `./docs`.
 
-### `proto2docs init [output-dir]`
+### `proto2astro init [output-dir]`
 
 Scaffold a new Astro Starlight project without generating any API content. This creates the base project: `package.json`, Astro components, styles, TypeScript types.
 
 ```sh
-proto2docs init                     # scaffold into ./docs
-proto2docs init ./my-docs           # scaffold into ./my-docs
-proto2docs init --force ./docs      # overwrite existing scaffold files
+proto2astro init                     # scaffold into ./docs
+proto2astro init ./my-docs           # scaffold into ./my-docs
+proto2astro init --force ./docs      # overwrite existing scaffold files
 ```
 
-Scaffold files (components, styles, `package.json`, etc.) are only written if they don't already exist. Use `--force` to overwrite them — useful when upgrading proto2docs to pick up new component changes.
+Scaffold files (components, styles, `package.json`, etc.) are only written if they don't already exist. Use `--force` to overwrite them — useful when upgrading proto2astro to pick up new component changes.
 
 **You don't need to run `init` separately.** The `generate` command runs the scaffold automatically if the site directory doesn't exist yet.
 
-### `proto2docs generate`
+### `proto2astro generate`
 
 The main command. Parses `.proto` files and generates the complete documentation site. This does the following in order:
 
@@ -98,76 +98,76 @@ The main command. Parses `.proto` files and generates the complete documentation
 7. Writes any custom pages from the config
 
 ```sh
-proto2docs generate                              # uses proto2docs.yaml
-proto2docs generate -c custom-config.yaml        # custom config path
-proto2docs generate -p ./proto -o ./docs         # override paths via flags
-proto2docs generate --buf-workspace ./            # discover protos from buf workspace
+proto2astro generate                              # uses proto2astro.yaml
+proto2astro generate -c custom-config.yaml        # custom config path
+proto2astro generate -p ./proto -o ./docs         # override paths via flags
+proto2astro generate --buf-workspace ./            # discover protos from buf workspace
 ```
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--config` | `-c` | `proto2docs.yaml` | Config file path |
+| `--config` | `-c` | `proto2astro.yaml` | Config file path |
 | `--proto` | `-p` | *(from config)* | Proto file or directory (overrides config) |
 | `--out` | `-o` | *(from config)* | Output directory (overrides config) |
 | `--buf-workspace` | | *(from config)* | Buf workspace root (overrides config) |
 
-### `proto2docs install`
+### `proto2astro install`
 
 Run `npm install` in the generated site directory. Required once before the first build, or after updating `package.json`.
 
 ```sh
-proto2docs install                  # default: ./docs
-proto2docs install -o ./my-docs
+proto2astro install                  # default: ./docs
+proto2astro install -o ./my-docs
 ```
 
-### `proto2docs build`
+### `proto2astro build`
 
 Build the site into static HTML. Output goes to `<site-dir>/dist/`.
 
 ```sh
-proto2docs build                    # default: ./docs
-proto2docs build -o ./my-docs
+proto2astro build                    # default: ./docs
+proto2astro build -o ./my-docs
 ```
 
-### `proto2docs dev`
+### `proto2astro dev`
 
 Start the Astro dev server with hot-reload at `http://localhost:4321`. Useful while iterating on custom components or styles.
 
 ```sh
-proto2docs dev                      # default: ./docs
-proto2docs dev -o ./my-docs
+proto2astro dev                      # default: ./docs
+proto2astro dev -o ./my-docs
 ```
 
-### `proto2docs preview`
+### `proto2astro preview`
 
 Serve the already-built static site locally for final review before deployment. You must run `build` first.
 
 ```sh
-proto2docs preview                  # default: ./docs
-proto2docs preview -o ./my-docs
+proto2astro preview                  # default: ./docs
+proto2astro preview -o ./my-docs
 ```
 
 ### Typical Workflow
 
 ```sh
 # First time
-proto2docs generate
-proto2docs install
-proto2docs build
+proto2astro generate
+proto2astro install
+proto2astro build
 
 # After changing protos
-proto2docs generate
-proto2docs build
+proto2astro generate
+proto2astro build
 
 # Iterate on styling/components
-proto2docs dev                      # hot-reload while editing files in docs/src/
+proto2astro dev                      # hot-reload while editing files in docs/src/
 ```
 
 ---
 
 ## Configuration
 
-All configuration lives in `proto2docs.yaml`. The generated `astro.config.mjs` is **fully regenerated on each `generate` run** — customize the site through this YAML file and through direct edits to components/styles (see [Customizing the Generated Site](#customizing-the-generated-site)).
+All configuration lives in `proto2astro.yaml`. The generated `astro.config.mjs` is **fully regenerated on each `generate` run** — customize the site through this YAML file and through direct edits to components/styles (see [Customizing the Generated Site](#customizing-the-generated-site)).
 
 ### Minimal Example
 
@@ -273,13 +273,13 @@ custom_pages:
 
 ## Customizing the Generated Site
 
-The generated site is a standard Astro Starlight project. You can customize it directly — proto2docs is designed to coexist with your manual changes.
+The generated site is a standard Astro Starlight project. You can customize it directly — proto2astro is designed to coexist with your manual changes.
 
 ### What Gets Overwritten on Each `generate` Run
 
 | Path | Behavior |
 |------|----------|
-| `astro.config.mjs` | **Always overwritten.** Regenerated from `proto2docs.yaml`. |
+| `astro.config.mjs` | **Always overwritten.** Regenerated from `proto2astro.yaml`. |
 | `src/data/api/*.ts` | **Always overwritten.** Generated from proto files. |
 | `src/content/docs/reference/api/*.mdx` | **Always overwritten.** MDX stubs for each service/enum. |
 | `src/content/docs/reference/api/index.md` | **Always overwritten.** API index page. |
@@ -297,11 +297,11 @@ The generated site is a standard Astro Starlight project. You can customize it d
 | `src/data/api/types.ts` | **Safe.** Only written on first scaffold. |
 | `package.json` | **Safe.** Only written on first scaffold. |
 | `tsconfig.json` | **Safe.** Only written on first scaffold. |
-| Any new files you add | **Safe.** proto2docs never deletes files. |
+| Any new files you add | **Safe.** proto2astro never deletes files. |
 
 In short: **scaffold files** (components, styles, package.json, tsconfig) are write-once. **Generated content** (data, pages, astro config) is overwritten every run.
 
-If you need to reset a scaffold file to the proto2docs default (e.g., after upgrading proto2docs), use `proto2docs init --force`.
+If you need to reset a scaffold file to the proto2astro default (e.g., after upgrading proto2astro), use `proto2astro init --force`.
 
 ### Adding Custom Pages
 
@@ -347,8 +347,8 @@ Edit `src/styles/custom.css` to change colors, spacing, or layout. This file is 
 
 The root landing page (`src/content/docs/index.md`) uses Starlight's `splash` template with a hero section. It is regenerated on each `generate` run. To customize the landing page, you have two options:
 
-1. **Set `title` and `description` in `proto2docs.yaml`** — these populate the hero section.
-2. **Replace `index.md` with your own `index.mdx`** — note that `generate` will recreate `index.md` each run. If you want full control, rename your file to `index.mdx` (MDX takes precedence over MD in Astro) and proto2docs won't interfere.
+1. **Set `title` and `description` in `proto2astro.yaml`** — these populate the hero section.
+2. **Replace `index.md` with your own `index.mdx`** — note that `generate` will recreate `index.md` each run. If you want full control, rename your file to `index.mdx` (MDX takes precedence over MD in Astro) and proto2astro won't interfere.
 
 ### Adding npm Dependencies
 
@@ -365,7 +365,7 @@ Then configure the plugin in your code. Just remember that `astro.config.mjs` is
 
 ## Proto Comment Conventions
 
-proto2docs extracts structured information from your proto comments. All conventions are optional — plain `//` comments work as descriptions.
+proto2astro extracts structured information from your proto comments. All conventions are optional — plain `//` comments work as descriptions.
 
 ### Leading Comments
 
@@ -428,7 +428,7 @@ The `@example` value is JSON-parsed when possible (objects, arrays, numbers, boo
 
 ## Generated Site Structure
 
-After running `proto2docs generate`, the output directory contains:
+After running `proto2astro generate`, the output directory contains:
 
 ```
 docs/
@@ -459,8 +459,8 @@ docs/
 │   │   └── EnumPage.astro
 │   └── styles/
 │       └── custom.css         # Site styles (scaffold, write-once)
-├── node_modules/              # After proto2docs install
-└── dist/                      # Built static HTML (after proto2docs build)
+├── node_modules/              # After proto2astro install
+└── dist/                      # Built static HTML (after proto2astro build)
 ```
 
 ---
@@ -505,10 +505,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - run: go install github.com/sarathsp06/proto2docs/cmd/proto2docs@latest
-      - run: proto2docs generate
-      - run: proto2docs install
-      - run: proto2docs build
+      - run: go install github.com/sarathsp06/proto2astro/cmd/proto2astro@latest
+      - run: proto2astro generate
+      - run: proto2astro install
+      - run: proto2astro build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/dist
@@ -518,7 +518,7 @@ jobs:
 **Netlify / Vercel / Any static host:**
 
 ```sh
-proto2docs generate && proto2docs install && proto2docs build
+proto2astro generate && proto2astro install && proto2astro build
 # Upload docs/dist/
 ```
 

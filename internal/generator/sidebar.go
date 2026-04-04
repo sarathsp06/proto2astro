@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sarathsp06/proto2docs/internal/config"
-	"github.com/sarathsp06/proto2docs/internal/parser"
+	"github.com/sarathsp06/proto2astro/internal/config"
+	"github.com/sarathsp06/proto2astro/internal/parser"
 )
 
 // sidebarData is the template context for generating astro.config.mjs.

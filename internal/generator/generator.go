@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sarathsp06/proto2docs/internal/config"
-	"github.com/sarathsp06/proto2docs/internal/parser"
+	"github.com/sarathsp06/proto2astro/internal/config"
+	"github.com/sarathsp06/proto2astro/internal/parser"
 )
 
 // Init scaffolds a new Astro Starlight site in outDir.
@@ -19,9 +19,9 @@ func Init(outDir string, force bool) error {
 	}
 	fmt.Println("Site scaffold created.")
 	fmt.Println("Next steps:")
-	fmt.Println("  1. proto2docs generate   (parse protos and generate docs)")
-	fmt.Println("  2. proto2docs install     (install npm dependencies)")
-	fmt.Println("  3. proto2docs build       (build the static site)")
+	fmt.Println("  1. proto2astro generate   (parse protos and generate docs)")
+	fmt.Println("  2. proto2astro install     (install npm dependencies)")
+	fmt.Println("  3. proto2astro build       (build the static site)")
 	return nil
 }
 
@@ -40,7 +40,7 @@ func Generate(cfg *config.Config) error {
 	// 2. Parse proto files
 	paths := cfg.Proto.Paths
 	if len(paths) == 0 {
-		return fmt.Errorf("no proto paths configured (set proto.paths in proto2docs.yaml)")
+		return fmt.Errorf("no proto paths configured (set proto.paths in proto2astro.yaml)")
 	}
 
 	fmt.Printf("Parsing proto files from %v ...\n", paths)
@@ -87,13 +87,13 @@ func Generate(cfg *config.Config) error {
 	fmt.Println("Generation complete!")
 	fmt.Printf("Output directory: %s\n", outDir)
 	fmt.Println("Next steps:")
-	fmt.Println("  1. proto2docs install     (install npm dependencies)")
-	fmt.Println("  2. proto2docs build       (build the static site)")
-	fmt.Println("  3. proto2docs dev         (start dev server for preview)")
+	fmt.Println("  1. proto2astro install     (install npm dependencies)")
+	fmt.Println("  2. proto2astro build       (build the static site)")
+	fmt.Println("  3. proto2astro dev         (start dev server for preview)")
 	return nil
 }
 
-// generateCustomPages writes custom pages defined in proto2docs.yaml.
+// generateCustomPages writes custom pages defined in proto2astro.yaml.
 func generateCustomPages(cfg *config.Config, outDir string) error {
 	for _, cp := range cfg.CustomPages {
 		if cp.Slug == "" || cp.Content == "" {

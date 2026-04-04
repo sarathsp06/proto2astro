@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sarathsp06/proto2docs/internal/config"
-	"github.com/sarathsp06/proto2docs/internal/parser"
+	"github.com/sarathsp06/proto2astro/internal/config"
+	"github.com/sarathsp06/proto2astro/internal/parser"
 )
 
 // ServicePageData is the template context for generating MDX stubs.
@@ -125,13 +125,13 @@ Generate your docs in three commands:
 
 ` + "```sh" + `
 # Initialize the Astro Starlight site scaffold
-proto2docs init
+proto2astro init
 
 # Parse your protos and generate content
-proto2docs generate
+proto2astro generate
 
 # Install dependencies and build
-proto2docs install && proto2docs build
+proto2astro install && proto2astro build
 ` + "```" + `
 
 The output is a standard Astro Starlight site — customize components,
@@ -146,7 +146,7 @@ description: How to write proto comments for rich documentation
 
 # Proto Comment Guide
 
-This page documents the comment conventions supported by proto2docs. 
+This page documents the comment conventions supported by proto2astro. 
 When you annotate your ` + "`.proto`" + ` files using these patterns, the documentation 
 generator will automatically extract structured information and display it in the API reference.
 

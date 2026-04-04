@@ -1,7 +1,7 @@
-// Package config provides configuration loading for proto2docs.
+// Package config provides configuration loading for proto2astro.
 package config
 
-// Config is the top-level proto2docs.yaml configuration.
+// Config is the top-level proto2astro.yaml configuration.
 type Config struct {
 	// Project metadata
 	Title       string `yaml:"title"`

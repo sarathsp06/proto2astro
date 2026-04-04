@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Two-pass parsing: messages/enums first, then services/RPCs with type resolution
 - Comment extraction supporting leading `//` comments with pattern detection:
   `Required`, `Deprecated:`, `Default: VALUE`, `Range: MIN-MAX`, `Errors: CODE`, `@example`
-- YAML config overlay (`proto2docs.yaml`) for service order, entity types, per-field examples, and description overrides
+- YAML config overlay (`proto2astro.yaml`) for service order, entity types, per-field examples, and description overrides
 - Full Astro Starlight site scaffold generation (Astro 6 + Starlight 0.38.2)
 - TypeScript data file generation using Go structs + `json.MarshalIndent` with thin TS wrapper
 - MDX stub pages for services and enums with two-column layout components

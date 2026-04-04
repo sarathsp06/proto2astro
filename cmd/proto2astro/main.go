@@ -1,14 +1,14 @@
-// proto2docs — Generate Astro Starlight API documentation from proto files.
+// proto2astro — Generate Astro Starlight API documentation from proto files.
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/sarathsp06/proto2docs/internal/buf"
-	"github.com/sarathsp06/proto2docs/internal/config"
-	"github.com/sarathsp06/proto2docs/internal/generator"
-	"github.com/sarathsp06/proto2docs/internal/npm"
+	"github.com/sarathsp06/proto2astro/internal/buf"
+	"github.com/sarathsp06/proto2astro/internal/config"
+	"github.com/sarathsp06/proto2astro/internal/generator"
+	"github.com/sarathsp06/proto2astro/internal/npm"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ var version = "dev"
 
 func main() {
 	root := &cobra.Command{
-		Use:     "proto2docs",
+		Use:     "proto2astro",
 		Short:   "Generate Astro Starlight API docs from proto files",
 		Version: version,
 	}
@@ -53,7 +53,7 @@ func main() {
 			return generator.Generate(cfg)
 		},
 	}
-	generateCmd.Flags().StringP("config", "c", "proto2docs.yaml", "Path to proto2docs.yaml config file")
+	generateCmd.Flags().StringP("config", "c", "proto2astro.yaml", "Path to proto2astro.yaml config file")
 	generateCmd.Flags().StringP("proto", "p", "", "Proto file or directory (overrides config)")
 	generateCmd.Flags().StringP("out", "o", "", "Output directory (overrides config)")
 	generateCmd.Flags().String("buf-workspace", "", "Buf workspace root (overrides config)")
