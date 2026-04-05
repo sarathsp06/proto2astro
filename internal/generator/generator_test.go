@@ -250,3 +250,248 @@ func TestGenerateIntegration_ScaffoldOnly(t *testing.T) {
 		t.Error("API index should be regenerated with service listing")
 	}
 }
+
+// TestGenerateIntegration_ScaffoldDisabled verifies that scaffold files are
+// not created when disabled via config.
+func TestGenerateIntegration_ScaffoldDisabled(t *testing.T) {
+	protoFile := filepath.Join(testdataDir(t), "basic.proto")
+	result, err := parser.ParseFiles([]string{protoFile})
+	if err != nil {
+		t.Fatalf("ParseFiles() error = %v", err)
+	}
+
+	outDir := t.TempDir()
+
+	falseBool := false
+	cfg := &config.Config{
+		Title:       "Test API",
+		Description: "Test API docs",
+		OutDir:      outDir,
+		Proto:       config.ProtoInput{Paths: []string{protoFile}},
+		Scaffold: config.ScaffoldConfig{
+			LandingPage:  &falseBool,
+			CommentGuide: &falseBool,
+		},
+	}
+	cfg.ApplyDefaults()
+
+	// Scaffold the site first
+	if err := Init(outDir, true); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	// Generate pages
+	if err := generatePages(result, cfg, outDir); err != nil {
+		t.Fatalf("generatePages() error = %v", err)
+	}
+
+	// Verify landing page was NOT created
+	indexPath := filepath.Join(outDir, "src/content/docs/index.mdx")
+	if _, err := os.Stat(indexPath); err == nil {
+		t.Error("index.mdx should not be created when scaffold.landing_page is false")
+	}
+
+	// Verify comment guide was NOT created
+	guidePath := filepath.Join(outDir, "src/content/docs/guides/comment-guide.md")
+	if _, err := os.Stat(guidePath); err == nil {
+		t.Error("comment-guide.md should not be created when scaffold.comment_guide is false")
+	}
+
+	// Verify API reference pages ARE still generated (they are not scaffold-only)
+	apiIndex := filepath.Join(outDir, "src/content/docs/reference/api/index.md")
+	if _, err := os.Stat(apiIndex); err != nil {
+		t.Error("API index should still be generated when scaffold is disabled")
+	}
+}
+
+// TestGenerateIntegration_ScaffoldPartial verifies that individual scaffold
+// files can be independently disabled.
+func TestGenerateIntegration_ScaffoldPartial(t *testing.T) {
+	protoFile := filepath.Join(testdataDir(t), "basic.proto")
+	result, err := parser.ParseFiles([]string{protoFile})
+	if err != nil {
+		t.Fatalf("ParseFiles() error = %v", err)
+	}
+
+	outDir := t.TempDir()
+
+	falseBool := false
+	trueBool := true
+	cfg := &config.Config{
+		Title:       "Test API",
+		Description: "Test API docs",
+		OutDir:      outDir,
+		Proto:       config.ProtoInput{Paths: []string{protoFile}},
+		Scaffold: config.ScaffoldConfig{
+			LandingPage:  &trueBool,
+			CommentGuide: &falseBool,
+		},
+	}
+	cfg.ApplyDefaults()
+
+	if err := Init(outDir, true); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	if err := generatePages(result, cfg, outDir); err != nil {
+		t.Fatalf("generatePages() error = %v", err)
+	}
+
+	// Landing page should be created
+	indexPath := filepath.Join(outDir, "src/content/docs/index.mdx")
+	if _, err := os.Stat(indexPath); err != nil {
+		t.Error("index.mdx should be created when scaffold.landing_page is true")
+	}
+
+	// Comment guide should NOT be created
+	guidePath := filepath.Join(outDir, "src/content/docs/guides/comment-guide.md")
+	if _, err := os.Stat(guidePath); err == nil {
+		t.Error("comment-guide.md should not be created when scaffold.comment_guide is false")
+	}
+}
+
+// TestGenerateIntegration_RouteCollision verifies that the landing page scaffold
+// is skipped when src/pages/index.astro already exists.
+func TestGenerateIntegration_RouteCollision(t *testing.T) {
+	protoFile := filepath.Join(testdataDir(t), "basic.proto")
+	result, err := parser.ParseFiles([]string{protoFile})
+	if err != nil {
+		t.Fatalf("ParseFiles() error = %v", err)
+	}
+
+	outDir := t.TempDir()
+	cfg := &config.Config{
+		Title:       "Test API",
+		Description: "Test API docs",
+		OutDir:      outDir,
+		Proto:       config.ProtoInput{Paths: []string{protoFile}},
+	}
+	cfg.ApplyDefaults()
+
+	if err := Init(outDir, true); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	// Create a conflicting src/pages/index.astro file
+	pagesDir := filepath.Join(outDir, "src", "pages")
+	if err := os.MkdirAll(pagesDir, 0o755); err != nil {
+		t.Fatalf("mkdir pages: %v", err)
+	}
+	customPage := filepath.Join(pagesDir, "index.astro")
+	if err := os.WriteFile(customPage, []byte("<html>Custom</html>"), 0o644); err != nil {
+		t.Fatalf("write custom page: %v", err)
+	}
+
+	// Generate pages — should skip index.mdx due to route collision
+	if err := generatePages(result, cfg, outDir); err != nil {
+		t.Fatalf("generatePages() error = %v", err)
+	}
+
+	// The scaffold index.mdx should NOT be created
+	indexPath := filepath.Join(outDir, "src/content/docs/index.mdx")
+	if _, err := os.Stat(indexPath); err == nil {
+		t.Error("index.mdx should not be created when src/pages/index.astro exists (route collision)")
+	}
+
+	// But comment guide and API pages should still be created
+	guidePath := filepath.Join(outDir, "src/content/docs/guides/comment-guide.md")
+	if _, err := os.Stat(guidePath); err != nil {
+		t.Error("comment-guide.md should still be created despite route collision for index")
+	}
+}
+
+// TestDetectRouteCollision tests the route collision detection helper.
+func TestDetectRouteCollision(t *testing.T) {
+	dir := t.TempDir()
+
+	// No collision when directory doesn't exist
+	if got := detectRouteCollision(dir, "index"); got != "" {
+		t.Errorf("expected no collision, got %q", got)
+	}
+
+	// Create src/pages directory
+	pagesDir := filepath.Join(dir, "src", "pages")
+	if err := os.MkdirAll(pagesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// No collision when src/pages/ is empty
+	if got := detectRouteCollision(dir, "index"); got != "" {
+		t.Errorf("expected no collision, got %q", got)
+	}
+
+	// Collision with .astro file
+	astroFile := filepath.Join(pagesDir, "index.astro")
+	if err := os.WriteFile(astroFile, []byte("test"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := detectRouteCollision(dir, "index"); got == "" {
+		t.Error("expected collision with index.astro")
+	} else if !strings.Contains(got, "index.astro") {
+		t.Errorf("collision path should mention index.astro, got %q", got)
+	}
+	os.Remove(astroFile)
+
+	// Collision with .tsx file
+	tsxFile := filepath.Join(pagesDir, "index.tsx")
+	if err := os.WriteFile(tsxFile, []byte("test"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := detectRouteCollision(dir, "index"); got == "" {
+		t.Error("expected collision with index.tsx")
+	}
+	os.Remove(tsxFile)
+
+	// No collision for different name
+	if got := detectRouteCollision(dir, "about"); got != "" {
+		t.Errorf("expected no collision for 'about', got %q", got)
+	}
+}
+
+// TestScaffoldConfigHelpers tests the ScaffoldConfig helper methods.
+func TestScaffoldConfigHelpers(t *testing.T) {
+	trueBool := true
+	falseBool := false
+
+	tests := []struct {
+		name      string
+		cfg       config.ScaffoldConfig
+		wantPage  bool
+		wantGuide bool
+	}{
+		{
+			name:      "zero value (defaults to true)",
+			cfg:       config.ScaffoldConfig{},
+			wantPage:  true,
+			wantGuide: true,
+		},
+		{
+			name:      "explicitly true",
+			cfg:       config.ScaffoldConfig{LandingPage: &trueBool, CommentGuide: &trueBool},
+			wantPage:  true,
+			wantGuide: true,
+		},
+		{
+			name:      "explicitly false",
+			cfg:       config.ScaffoldConfig{LandingPage: &falseBool, CommentGuide: &falseBool},
+			wantPage:  false,
+			wantGuide: false,
+		},
+		{
+			name:      "mixed",
+			cfg:       config.ScaffoldConfig{LandingPage: &trueBool, CommentGuide: &falseBool},
+			wantPage:  true,
+			wantGuide: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cfg.LandingPageEnabled(); got != tt.wantPage {
+				t.Errorf("LandingPageEnabled() = %v, want %v", got, tt.wantPage)
+			}
+			if got := tt.cfg.CommentGuideEnabled(); got != tt.wantGuide {
+				t.Errorf("CommentGuideEnabled() = %v, want %v", got, tt.wantGuide)
+			}
+		})
+	}
+}

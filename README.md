@@ -230,6 +230,13 @@ entity_types:
   - PaymentIntent
   - Customer
 
+# ── Scaffold control ────────────────────────────
+# Disable scaffold-only files you don't need.
+# Both default to true. Route collisions with src/pages/ are also detected.
+scaffold:
+  landing_page: true       # set false to skip index.mdx
+  comment_guide: false      # set false to skip guides/comment-guide.md
+
 # ── Per-service overrides ────────────────────────
 services:
   PaymentService:
@@ -284,6 +291,8 @@ custom_pages:
 | `custom_css` | list | | Additional CSS files beyond the default `custom.css` |
 | `service_order` | list | | Explicit sidebar ordering for services |
 | `entity_types` | list | | Message types that should not be flattened |
+| `scaffold.landing_page` | bool | `true` | Generate the root landing page (`index.mdx`) |
+| `scaffold.comment_guide` | bool | `true` | Generate the comment guide (`guides/comment-guide.md`) |
 | `services` | map | | Per-service overrides (descriptions, examples, fields) |
 | `custom_pages` | list | | Additional pages (`slug` for `guides/`, `path` for arbitrary location) |
 
@@ -331,6 +340,13 @@ The generated site is a standard Astro Starlight project. You can edit component
 
 **Safe to edit** (scaffold-only, never overwritten by `generate`):
 `astro.config.mjs`, `src/components/*.astro`, `src/styles/custom.css`, `src/content.config.ts`, `src/data/api/types.ts`, `package.json`, `tsconfig.json`, `src/content/docs/index.mdx` (landing page), `src/content/docs/guides/comment-guide.md`
+
+> **Route collision detection** — if `src/pages/index.astro` (or `.tsx`, `.jsx`, etc.) exists, the scaffold landing page is automatically skipped to avoid routing conflicts. You can also disable scaffold files via config:
+> ```yaml
+> scaffold:
+>   landing_page: false
+>   comment_guide: false
+> ```
 
 **Regenerated** on every `generate` run:
 `src/data/proto2astro-config.json` (sidebar + site settings), `src/data/api/*.ts` (service/enum data), `src/content/docs/reference/api/*.mdx` (service stubs), `src/content/docs/reference/api/index.md`

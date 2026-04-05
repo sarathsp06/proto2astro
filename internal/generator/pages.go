@@ -352,22 +352,29 @@ func generatePages(result *parser.ParseResult, cfg *config.Config, outDir string
 		return err
 	}
 
-	// Generate comment guide (scaffold-only: skip if file already exists)
-	guideDir := filepath.Join(outDir, "src", "content", "docs", "guides")
-	if err := os.MkdirAll(guideDir, 0o755); err != nil {
-		return fmt.Errorf("mkdir guides dir: %w", err)
-	}
-	guidePath := filepath.Join(guideDir, "comment-guide.md")
-	if _, err := os.Stat(guidePath); os.IsNotExist(err) {
-		if err := os.WriteFile(guidePath, []byte(commentGuideMD), 0o644); err != nil {
-			return fmt.Errorf("write comment guide: %w", err)
+	// Generate comment guide (scaffold-only: skip if file already exists or disabled via config)
+	if cfg.Scaffold.CommentGuideEnabled() {
+		guideDir := filepath.Join(outDir, "src", "content", "docs", "guides")
+		if err := os.MkdirAll(guideDir, 0o755); err != nil {
+			return fmt.Errorf("mkdir guides dir: %w", err)
+		}
+		guidePath := filepath.Join(guideDir, "comment-guide.md")
+		if _, err := os.Stat(guidePath); os.IsNotExist(err) {
+			if err := os.WriteFile(guidePath, []byte(commentGuideMD), 0o644); err != nil {
+				return fmt.Errorf("write comment guide: %w", err)
+			}
 		}
 	}
 
-	// Generate root index page (scaffold-only: skip if file already exists)
-	rootDocsDir := filepath.Join(outDir, "src", "content", "docs")
-	if err := generateRootIndex(cfg, rootDocsDir); err != nil {
-		return err
+	// Generate root index page (scaffold-only: skip if file already exists or disabled via config)
+	if cfg.Scaffold.LandingPageEnabled() {
+		rootDocsDir := filepath.Join(outDir, "src", "content", "docs")
+		// Route collision detection: warn if src/pages/index.* exists
+		if collision := detectRouteCollision(outDir, "index"); collision != "" {
+			fmt.Printf("  warning: scaffold index.mdx skipped — route collision with %s\n", collision)
+		} else if err := generateRootIndex(cfg, rootDocsDir); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -472,4 +479,23 @@ func sortedEnumNames(pkg *parser.ProtoPackage) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// detectRouteCollision checks if a src/pages/{name}.* file exists that would
+// conflict with a scaffold-only content page. Returns the relative path of the
+// conflicting file, or empty string if no collision.
+func detectRouteCollision(outDir string, name string) string {
+	pagesDir := filepath.Join(outDir, "src", "pages")
+	for _, ext := range []string{".astro", ".tsx", ".jsx", ".md", ".mdx"} {
+		candidate := filepath.Join(pagesDir, name+ext)
+		if _, err := os.Stat(candidate); err == nil {
+			// Return relative path for a readable warning
+			rel, _ := filepath.Rel(outDir, candidate)
+			if rel == "" {
+				rel = candidate
+			}
+			return rel
+		}
+	}
+	return ""
 }

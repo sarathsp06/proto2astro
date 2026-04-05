@@ -27,6 +27,9 @@ type Config struct {
 	// Additional CSS files beyond the default custom.css
 	CustomCSS []string `yaml:"custom_css"`
 
+	// Scaffold options
+	Scaffold ScaffoldConfig `yaml:"scaffold"`
+
 	// Overlay
 	ServiceOrder []string                  `yaml:"service_order"`
 	EntityTypes  []string                  `yaml:"entity_types"`
@@ -98,4 +101,24 @@ type SidebarSection struct {
 type SidebarItem struct {
 	Label string `yaml:"label"` // optional display label
 	Slug  string `yaml:"slug"`  // content slug (e.g. "getting-started/installation")
+}
+
+// ScaffoldConfig controls which scaffold-only files are generated.
+type ScaffoldConfig struct {
+	// LandingPage controls the root index.mdx landing page.
+	// Default: true (generated on first run, never overwritten).
+	LandingPage *bool `yaml:"landing_page"`
+	// CommentGuide controls the guides/comment-guide.md page.
+	// Default: true (generated on first run, never overwritten).
+	CommentGuide *bool `yaml:"comment_guide"`
+}
+
+// LandingPageEnabled returns whether the landing page scaffold should be generated.
+func (s ScaffoldConfig) LandingPageEnabled() bool {
+	return s.LandingPage == nil || *s.LandingPage
+}
+
+// CommentGuideEnabled returns whether the comment guide scaffold should be generated.
+func (s ScaffoldConfig) CommentGuideEnabled() bool {
+	return s.CommentGuide == nil || *s.CommentGuide
 }
