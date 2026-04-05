@@ -148,9 +148,9 @@ func TestMarshalEnumTS_Golden(t *testing.T) {
 	}
 }
 
-// TestMarshalServiceTS_HTMLChars specifically verifies HTML character handling.
-// Current behavior: Go's json.Marshal escapes < > & as \u003c \u003e \u0026.
-// This is bug #1 — will be fixed in Phase 2.
+// TestMarshalServiceTS_HTMLChars verifies that HTML characters are preserved
+// without escaping. Go's default json.Marshal escapes < > & but we use
+// SetEscapeHTML(false) to prevent this.
 func TestMarshalServiceTS_HTMLChars(t *testing.T) {
 	svc := TSService{
 		Service:     "TestService",
@@ -164,14 +164,24 @@ func TestMarshalServiceTS_HTMLChars(t *testing.T) {
 		t.Fatalf("marshalServiceTS() error = %v", err)
 	}
 
-	// Current (buggy) behavior: HTML chars are escaped
-	if !strings.Contains(got, `\u003c`) {
-		t.Error("expected \\u003c in output (current HTML escaping behavior)")
+	// After fix: HTML chars should NOT be escaped
+	if strings.Contains(got, `\u003c`) {
+		t.Error("should not contain \\u003c — HTML escaping should be disabled")
 	}
-	if !strings.Contains(got, `\u003e`) {
-		t.Error("expected \\u003e in output (current HTML escaping behavior)")
+	if strings.Contains(got, `\u003e`) {
+		t.Error("should not contain \\u003e — HTML escaping should be disabled")
 	}
-	if !strings.Contains(got, `\u0026`) {
-		t.Error("expected \\u0026 in output (current HTML escaping behavior)")
+	if strings.Contains(got, `\u0026`) {
+		t.Error("should not contain \\u0026 — HTML escaping should be disabled")
+	}
+	// Should contain the literal characters
+	if !strings.Contains(got, `< 100`) {
+		t.Error("should contain literal < character")
+	}
+	if !strings.Contains(got, `> 0`) {
+		t.Error("should contain literal > character")
+	}
+	if !strings.Contains(got, `&`) {
+		t.Error("should contain literal & character")
 	}
 }

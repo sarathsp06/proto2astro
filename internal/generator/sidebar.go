@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,7 +53,7 @@ type sidebarGroupItem struct {
 func generateProto2AstroConfig(result *parser.ParseResult, cfg *config.Config, outDir string) error {
 	data := buildConfigJSON(result, cfg)
 
-	b, err := json.MarshalIndent(data, "", "  ")
+	b, err := marshalJSON(data)
 	if err != nil {
 		return fmt.Errorf("marshal proto2astro config: %w", err)
 	}

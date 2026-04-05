@@ -4,11 +4,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/sarathsp06/proto2astro/internal/config"
 	"github.com/sarathsp06/proto2astro/internal/parser"
+)
+
+// Regex patterns for annotation stripping in cleanDescription.
+var (
+	cleanDefaultRE = regexp.MustCompile(`Default:\s*\S+\.?`)
+	cleanRangeRE   = regexp.MustCompile(`Range:\s*\S+\s*-\s*\S+`)
 )
 
 // generateDataFiles generates TypeScript data files (one per service + one per enum) in outDir/src/data/api/.
@@ -148,14 +155,14 @@ func findEnumUsage(enumName string, pkg *parser.ProtoPackage) []string {
 		for _, rpc := range svc.RPCs {
 			// Check request message
 			if reqMsg, ok := pkg.Messages[rpc.RequestType]; ok {
-				if messageUsesEnum(reqMsg, enumName) && !seen[svc.Name] {
+				if messageUsesEnum(reqMsg, enumName, pkg, nil) && !seen[svc.Name] {
 					result = append(result, svc.Name)
 					seen[svc.Name] = true
 				}
 			}
 			// Check response message
 			if respMsg, ok := pkg.Messages[rpc.ResponseType]; ok {
-				if messageUsesEnum(respMsg, enumName) && !seen[svc.Name] {
+				if messageUsesEnum(respMsg, enumName, pkg, nil) && !seen[svc.Name] {
 					result = append(result, svc.Name)
 					seen[svc.Name] = true
 				}
@@ -166,11 +173,28 @@ func findEnumUsage(enumName string, pkg *parser.ProtoPackage) []string {
 	return result
 }
 
-// messageUsesEnum checks whether a message has any field referencing the given enum.
-func messageUsesEnum(msg *parser.ProtoMessage, enumName string) bool {
+// messageUsesEnum checks whether a message (or any of its nested message
+// fields) references the given enum. The seen map prevents infinite recursion
+// from self-referencing or mutually-recursive message types.
+func messageUsesEnum(msg *parser.ProtoMessage, enumName string, pkg *parser.ProtoPackage, seen map[string]bool) bool {
+	if seen == nil {
+		seen = make(map[string]bool)
+	}
+	if seen[msg.Name] {
+		return false // cycle guard
+	}
+	seen[msg.Name] = true
+
 	for _, f := range msg.Fields {
 		if f.IsEnum && f.RawType == enumName {
 			return true
+		}
+		if f.IsMessage {
+			if sub, ok := pkg.Messages[f.RawType]; ok {
+				if messageUsesEnum(sub, enumName, pkg, seen) {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -283,11 +307,20 @@ func shouldFlatten(typeName string, entityTypes []string) bool {
 }
 
 // cleanDescription strips annotation patterns from the visible description.
+// Annotations like @example, Default:, and Range: are extracted as structured
+// data elsewhere; leaving them in the description creates redundant noise.
 func cleanDescription(desc string) string {
 	desc = strings.TrimSpace(desc)
 	desc = strings.TrimPrefix(desc, "Required. ")
 	desc = strings.TrimPrefix(desc, "Required ")
-	return desc
+	// Strip @example and everything after it (usually last in comment)
+	if idx := strings.Index(desc, "@example"); idx >= 0 {
+		desc = desc[:idx]
+	}
+	// Strip Default: VALUE. and Range: MIN-MAX patterns
+	desc = cleanDefaultRE.ReplaceAllString(desc, "")
+	desc = cleanRangeRE.ReplaceAllString(desc, "")
+	return strings.TrimSpace(desc)
 }
 
 // toKebab converts a PascalCase name to kebab-case.

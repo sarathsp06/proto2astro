@@ -17,22 +17,21 @@ func TestCleanDescription(t *testing.T) {
 		{"no Required", "The webhook URL.", "The webhook URL."},
 		{"empty", "", ""},
 		{"only whitespace", "   ", ""},
-		// NOTE: Current behavior — @example, Default:, Range: are NOT stripped.
-		// These will be updated in Phase 2 when cleanDescription is fixed.
+		// Annotations ARE now stripped after Phase 2 fix.
 		{
-			"leaves @example in description",
+			"strips @example from description",
 			`The item name. @example "test"`,
-			`The item name. @example "test"`,
+			"The item name.",
 		},
 		{
-			"leaves Default: in description",
+			"strips Default: from description",
 			"Max retries. Default: 5.",
-			"Max retries. Default: 5.",
+			"Max retries.",
 		},
 		{
-			"leaves Range: in description",
+			"strips Range: from description",
 			"Page size. Range: 1-100.",
-			"Page size. Range: 1-100.",
+			"Page size.",
 		},
 	}
 
@@ -97,45 +96,45 @@ func TestToKebab(t *testing.T) {
 }
 
 func TestMessageUsesEnum(t *testing.T) {
-	// Direct enum usage — should be found
-	msg := &parser.ProtoMessage{
-		Name: "CreateItemRequest",
-		Fields: []parser.ProtoField{
-			{Name: "name", Type: "string", RawType: "string"},
-			{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
+	// Build a package with messages for recursive lookup
+	pkg := &parser.ProtoPackage{
+		Name: "testpkg.v1",
+		Messages: map[string]*parser.ProtoMessage{
+			"CreateItemRequest": {
+				Name: "CreateItemRequest",
+				Fields: []parser.ProtoField{
+					{Name: "name", Type: "string", RawType: "string"},
+					{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
+				},
+			},
+			"ItemDetail": {
+				Name: "ItemDetail",
+				Fields: []parser.ProtoField{
+					{Name: "id", Type: "string", RawType: "string"},
+					{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
+				},
+			},
+			"GetItemResponse": {
+				Name: "GetItemResponse",
+				Fields: []parser.ProtoField{
+					{Name: "item", Type: "ItemDetail", RawType: "ItemDetail", IsMessage: true},
+				},
+			},
 		},
 	}
 
-	if !messageUsesEnum(msg, "ItemStatus") {
+	// Direct enum usage — should be found
+	if !messageUsesEnum(pkg.Messages["CreateItemRequest"], "ItemStatus", pkg, nil) {
 		t.Error("messageUsesEnum should find direct enum usage")
 	}
-	if messageUsesEnum(msg, "Priority") {
+	if messageUsesEnum(pkg.Messages["CreateItemRequest"], "Priority", pkg, nil) {
 		t.Error("messageUsesEnum should not find unused enum")
 	}
 
-	// Nested enum usage — current behavior: NOT found (bug #3)
-	// The enum is inside a nested message, but messageUsesEnum only checks direct fields.
-	innerMsg := &parser.ProtoMessage{
-		Name: "ItemDetail",
-		Fields: []parser.ProtoField{
-			{Name: "id", Type: "string", RawType: "string"},
-			{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
-		},
+	// Nested enum usage — NOW found after Phase 2 recursive fix
+	if !messageUsesEnum(pkg.Messages["GetItemResponse"], "ItemStatus", pkg, nil) {
+		t.Error("messageUsesEnum should find nested enum usage (recursive)")
 	}
-	outerMsg := &parser.ProtoMessage{
-		Name: "GetItemResponse",
-		Fields: []parser.ProtoField{
-			{Name: "item", Type: "ItemDetail", RawType: "ItemDetail", IsMessage: true},
-		},
-	}
-
-	// outerMsg does not directly use the enum — messageUsesEnum returns false
-	// This is the known bug #3 that will be fixed in Phase 2.
-	if messageUsesEnum(outerMsg, "ItemStatus") {
-		t.Error("messageUsesEnum (current behavior) should NOT find nested enum usage")
-	}
-
-	_ = innerMsg // will be used in Phase 2 test for recursive check
 }
 
 func TestFindEnumUsage(t *testing.T) {
@@ -186,11 +185,10 @@ func TestFindEnumUsage(t *testing.T) {
 	}
 
 	// ItemStatus is used in ItemDetail (nested in CreateItemResponse) —
-	// current behavior: NOT found because messageUsesEnum is non-recursive (bug #3).
-	// This will be updated in Phase 2 when the fix is applied.
+	// NOW found after Phase 2 recursive messageUsesEnum fix.
 	statusUsage := findEnumUsage("ItemStatus", pkg)
-	if len(statusUsage) != 0 {
-		t.Errorf("findEnumUsage(ItemStatus) = %v, want [] (current buggy behavior)", statusUsage)
+	if len(statusUsage) != 1 || statusUsage[0] != "ItemService" {
+		t.Errorf("findEnumUsage(ItemStatus) = %v, want [ItemService]", statusUsage)
 	}
 }
 

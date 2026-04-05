@@ -19,7 +19,7 @@ const service: ApiService = {
         {
           "name": "count",
           "type": "int32",
-          "description": "A description with HTML chars: values \u003c 100 \u0026 \u003e 0. Default: 50. Range: 1-100.",
+          "description": "A description with HTML chars: values < 100 & > 0. Default: 50. Range: 1-100.",
           "example": 50
         },
         {

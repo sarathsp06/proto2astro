@@ -3,6 +3,7 @@
 package generator
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -59,7 +60,7 @@ type TSEnum struct {
 
 // marshalServiceTS marshals a TSService to a TypeScript source file.
 func marshalServiceTS(svc TSService) (string, error) {
-	data, err := json.MarshalIndent(svc, "", "  ")
+	data, err := marshalJSON(svc)
 	if err != nil {
 		return "", fmt.Errorf("marshal service %s: %w", svc.Service, err)
 	}
@@ -71,7 +72,7 @@ func marshalServiceTS(svc TSService) (string, error) {
 
 // marshalEnumTS marshals a TSEnum to a TypeScript source file.
 func marshalEnumTS(enum TSEnum) (string, error) {
-	data, err := json.MarshalIndent(enum, "", "  ")
+	data, err := marshalJSON(enum)
 	if err != nil {
 		return "", fmt.Errorf("marshal enum %s: %w", enum.Name, err)
 	}
@@ -79,4 +80,19 @@ func marshalEnumTS(enum TSEnum) (string, error) {
 		"import type { ApiEnum } from \"./types\";\n\nconst enumData: ApiEnum = %s;\n\nexport default enumData;\n",
 		string(data),
 	), nil
+}
+
+// marshalJSON encodes a value as indented JSON without HTML escaping.
+// Go's default json.Marshal escapes <, >, and & as \u003c, \u003e, \u0026
+// which corrupts proto descriptions containing comparison operators or ampersands.
+func marshalJSON(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	// Encode appends a trailing newline; trim it so callers control formatting.
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }

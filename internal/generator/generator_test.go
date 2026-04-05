@@ -109,6 +109,25 @@ func TestGenerateIntegration(t *testing.T) {
 		t.Error("service data should contain RPC name CreateItem")
 	}
 
+	// Verify bug #1 fix: HTML chars are NOT escaped
+	if strings.Contains(svcContent, `\u003c`) {
+		t.Error("service data should not contain \\u003c (HTML escaping should be disabled)")
+	}
+	if strings.Contains(svcContent, `\u0026`) {
+		t.Error("service data should not contain \\u0026 (HTML escaping should be disabled)")
+	}
+
+	// Verify bug #2+#7 fix: @example, Default:, Range: are stripped from descriptions
+	if strings.Contains(svcContent, `@example`) {
+		t.Error("service data descriptions should not contain @example (should be stripped)")
+	}
+	if strings.Contains(svcContent, `Default:`) {
+		t.Error("service data descriptions should not contain Default: (should be stripped)")
+	}
+	if strings.Contains(svcContent, `Range:`) {
+		t.Error("service data descriptions should not contain Range: (should be stripped)")
+	}
+
 	// Verify enum data file contains expected content
 	enumData, err := os.ReadFile(filepath.Join(outDir, "src/data/api/enum-item-status.ts"))
 	if err != nil {
