@@ -195,10 +195,35 @@ proto:
 # ── Output ───────────────────────────────────────
 out_dir: ./docs
 
-# ── Sidebar ordering ─────────────────────────────
+# ── Sidebar ──────────────────────────────────────
+# Sections rendered before/after the auto-generated API Reference group.
+sidebar:
+  before:
+    - label: "Getting Started"
+      items:
+        - slug: getting-started/installation
+        - slug: getting-started/quickstart
+    - label: "Guides"
+      items:
+        - label: "Comment Guide"
+          slug: guides/comment-guide
+  after:
+    - label: "Resources"
+      items:
+        - slug: resources/changelog
+
+# ── Sidebar ordering (within API Reference) ─────
 service_order:
   - PaymentService
   - RefundService
+
+# ── Starlight component overrides ────────────────
+components:
+  Footer: "./src/components/Footer.astro"
+
+# ── Additional CSS ───────────────────────────────
+custom_css:
+  - "./src/styles/brand.css"
 
 # ── Type handling ────────────────────────────────
 entity_types:
@@ -223,10 +248,16 @@ services:
 # ── Custom pages ─────────────────────────────────
 custom_pages:
   - title: "Webhooks"
-    slug: webhooks
+    slug: webhooks                          # → guides/webhooks.md
     content: |
       # Webhook Events
       Payment events are sent to your configured endpoint...
+
+  - title: "Kubernetes Deployment"
+    path: deployment/kubernetes              # → deployment/kubernetes.md
+    content: |
+      # Deploying to Kubernetes
+      Use the Helm chart to deploy...
 ```
 
 </details>
@@ -247,10 +278,14 @@ custom_pages:
 | `proto.buf_workspace` | string | | Buf workspace root directory |
 | `proto.buf_modules` | list | | Specific Buf modules to include |
 | `out_dir` | string | `"./docs"` | Output directory |
+| `sidebar.before` | list | | Sidebar sections rendered before API Reference |
+| `sidebar.after` | list | | Sidebar sections rendered after API Reference |
+| `components` | map | | Starlight component overrides (e.g., `Footer: ./src/components/Footer.astro`) |
+| `custom_css` | list | | Additional CSS files beyond the default `custom.css` |
 | `service_order` | list | | Explicit sidebar ordering for services |
 | `entity_types` | list | | Message types that should not be flattened |
 | `services` | map | | Per-service overrides (descriptions, examples, fields) |
-| `custom_pages` | list | | Additional pages (added under `/guides/`) |
+| `custom_pages` | list | | Additional pages (`slug` for `guides/`, `path` for arbitrary location) |
 
 </details>
 
@@ -293,11 +328,31 @@ message CreateUserRequest {
 
 The generated site is a standard Astro Starlight project. You can edit components, styles, and pages directly.
 
-**Safe to edit** (written once, never overwritten):
-`src/components/*.astro`, `src/styles/custom.css`, `src/content.config.ts`, `src/data/api/types.ts`, `package.json`, `tsconfig.json`
+**Safe to edit** (scaffold-only, never overwritten by `generate`):
+`astro.config.mjs`, `src/components/*.astro`, `src/styles/custom.css`, `src/content.config.ts`, `src/data/api/types.ts`, `package.json`, `tsconfig.json`, `src/content/docs/index.mdx` (landing page), `src/content/docs/guides/comment-guide.md`
 
 **Regenerated** on every `generate` run:
-`astro.config.mjs`, `src/data/api/*.ts`, `src/content/docs/reference/api/*.mdx`, `src/content/docs/index.md`
+`src/data/proto2astro-config.json` (sidebar + site settings), `src/data/api/*.ts` (service/enum data), `src/content/docs/reference/api/*.mdx` (service stubs), `src/content/docs/reference/api/index.md`
+
+### How it works
+
+`astro.config.mjs` is written once and imports `src/data/proto2astro-config.json` for all proto-derived and YAML-derived settings (title, sidebar, social links, etc.). When you re-run `generate`, only the JSON file is updated — your customizations to `astro.config.mjs` (custom integrations, Vite config, i18n, etc.) are preserved.
+
+Add sidebar sections via `proto2astro.yaml`:
+
+```yaml
+sidebar:
+  before:
+    - label: "Getting Started"
+      items:
+        - slug: getting-started/installation
+  after:
+    - label: "Resources"
+      items:
+        - slug: resources/changelog
+```
+
+Or edit `astro.config.mjs` directly — it won't be overwritten.
 
 Run `proto2astro init --force` to reset scaffold files to defaults after upgrading.
 

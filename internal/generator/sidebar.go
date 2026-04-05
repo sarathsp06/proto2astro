@@ -7,182 +7,159 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"text/template"
 
 	"github.com/sarathsp06/proto2astro/internal/config"
 	"github.com/sarathsp06/proto2astro/internal/parser"
 )
 
-// sidebarData is the template context for generating astro.config.mjs.
-type sidebarData struct {
-	Site         string
-	Base         string
-	Title        string
-	Description  string
-	Logo         string
-	Social       []config.Link
-	EditLink     string
-	CustomPages  []config.CustomPage
-	MultiPackage bool
-	Packages     []sidebarPackage
+// proto2astroConfig is the JSON structure written to src/data/proto2astro-config.json.
+// It is imported by the scaffold's astro.config.mjs so that all proto-derived
+// and YAML-derived settings survive regeneration while astro.config.mjs itself
+// remains user-editable.
+type proto2astroConfig struct {
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	Site        string            `json:"site,omitempty"`
+	Base        string            `json:"base,omitempty"`
+	Logo        string            `json:"logo,omitempty"`
+	Social      []socialLink      `json:"social,omitempty"`
+	EditLink    string            `json:"editLink,omitempty"`
+	Components  map[string]string `json:"components,omitempty"`
+	CustomCSS   []string          `json:"customCss,omitempty"`
+	Sidebar     []sidebarGroup    `json:"sidebar"`
 }
 
-// sidebarPackage represents a proto package in the sidebar.
-type sidebarPackage struct {
-	Label    string
-	Services []sidebarItem
-	Enums    []sidebarItem
+// socialLink is the JSON representation of a social/external link.
+type socialLink struct {
+	Icon  string `json:"icon"`
+	Label string `json:"label"`
+	Href  string `json:"href"`
 }
 
-// sidebarItem is a single sidebar entry.
-type sidebarItem struct {
-	Slug string
+// sidebarGroup is a single sidebar section in the JSON output.
+type sidebarGroup struct {
+	Label string             `json:"label"`
+	Items []sidebarGroupItem `json:"items"`
 }
 
-// jsString is a template function that JSON-encodes a string for use in JS source.
-func jsString(s string) string {
-	b, _ := json.Marshal(s)
-	return string(b)
+// sidebarGroupItem is a single entry in a sidebar group.
+type sidebarGroupItem struct {
+	Label string `json:"label,omitempty"`
+	Slug  string `json:"slug"`
 }
 
-const astroConfigTemplate = `import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
+// generateProto2AstroConfig writes src/data/proto2astro-config.json.
+// This file is regenerated on every `generate` run and contains all
+// config-derived and proto-derived settings that astro.config.mjs reads.
+func generateProto2AstroConfig(result *parser.ParseResult, cfg *config.Config, outDir string) error {
+	data := buildConfigJSON(result, cfg)
 
-export default defineConfig({
-{{- if .Site}}
-  site: {{js .Site}},
-{{- end}}
-{{- if .Base}}
-  base: {{js .Base}},
-{{- end}}
-  integrations: [
-    starlight({
-      title: {{js .Title}},
-      description: {{js .Description}},
-{{- if .Logo}}
-      logo: { src: {{js .Logo}} },
-{{- end}}
-{{- if .Social}}
-      social: [
-{{- range .Social}}
-        { icon: {{js .Icon}}, label: {{js .Label}}, href: {{js .Href}} },
-{{- end}}
-      ],
-{{- end}}
-{{- if .EditLink}}
-      editLink: { baseUrl: {{js .EditLink}} },
-{{- end}}
-      sidebar: [
-        {
-          label: 'Guides',
-          items: [
-            { slug: 'guides/comment-guide' },
-{{- range .CustomPages}}
-            { slug: 'guides/{{.Slug}}' },
-{{- end}}
-          ],
-        },
-{{- if .MultiPackage}}
-{{- range .Packages}}
-        {
-          label: {{js .Label}},
-          items: [
-            { slug: 'reference/api' },
-{{- range .Services}}
-            { slug: 'reference/api/{{.Slug}}' },
-{{- end}}
-{{- range .Enums}}
-            { slug: 'reference/api/{{.Slug}}' },
-{{- end}}
-          ],
-        },
-{{- end}}
-{{- else}}
-        {
-          label: 'API Reference',
-          items: [
-            { slug: 'reference/api' },
-{{- range .Packages}}
-{{- range .Services}}
-            { slug: 'reference/api/{{.Slug}}' },
-{{- end}}
-{{- range .Enums}}
-            { slug: 'reference/api/{{.Slug}}' },
-{{- end}}
-{{- end}}
-          ],
-        },
-{{- end}}
-      ],
-      customCss: ['./src/styles/custom.css'],
-    }),
-  ],
-});
-`
-
-// generateAstroConfig generates the astro.config.mjs with a dynamic sidebar
-// based on parsed proto packages and services.
-func generateAstroConfig(result *parser.ParseResult, cfg *config.Config, outDir string) error {
-	tmpl, err := template.New("astro-config").Funcs(template.FuncMap{
-		"js": jsString,
-	}).Parse(astroConfigTemplate)
+	b, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("parse astro config template: %w", err)
+		return fmt.Errorf("marshal proto2astro config: %w", err)
 	}
 
-	data := buildSidebarData(result, cfg)
-
-	path := filepath.Join(outDir, "astro.config.mjs")
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
+	path := filepath.Join(outDir, "src", "data", "proto2astro-config.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("mkdir for config json: %w", err)
 	}
-	defer func() { _ = f.Close() }()
-
-	return tmpl.Execute(f, data)
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
 }
 
-// buildSidebarData constructs the template context for astro.config.mjs.
-func buildSidebarData(result *parser.ParseResult, cfg *config.Config) sidebarData {
+// buildConfigJSON constructs the full JSON config from parsed protos and YAML config.
+func buildConfigJSON(result *parser.ParseResult, cfg *config.Config) proto2astroConfig {
+	// Build sidebar
+	var sidebar []sidebarGroup
+
+	// Before sections
+	for _, sec := range cfg.Sidebar.Before {
+		sidebar = append(sidebar, configSectionToGroup(sec))
+	}
+
+	// API Reference section(s)
+	sidebar = append(sidebar, buildAPIReferenceSidebar(result, cfg)...)
+
+	// After sections
+	for _, sec := range cfg.Sidebar.After {
+		sidebar = append(sidebar, configSectionToGroup(sec))
+	}
+
+	// Social links
+	var social []socialLink
+	for _, l := range cfg.Social {
+		social = append(social, socialLink{Icon: l.Icon, Label: l.Label, Href: l.Href})
+	}
+
+	return proto2astroConfig{
+		Title:       cfg.Title,
+		Description: cfg.Description,
+		Site:        cfg.Site,
+		Base:        cfg.Base,
+		Logo:        cfg.Logo,
+		Social:      social,
+		EditLink:    cfg.EditLink,
+		Components:  cfg.Components,
+		CustomCSS:   cfg.CustomCSS,
+		Sidebar:     sidebar,
+	}
+}
+
+// configSectionToGroup converts a YAML sidebar section to a JSON sidebar group.
+func configSectionToGroup(sec config.SidebarSection) sidebarGroup {
+	var items []sidebarGroupItem
+	for _, item := range sec.Items {
+		items = append(items, sidebarGroupItem{Label: item.Label, Slug: item.Slug})
+	}
+	return sidebarGroup{Label: sec.Label, Items: items}
+}
+
+// buildAPIReferenceSidebar builds the API Reference sidebar groups from parsed protos.
+func buildAPIReferenceSidebar(result *parser.ParseResult, cfg *config.Config) []sidebarGroup {
 	var pkgNames []string
 	for name := range result.Packages {
 		pkgNames = append(pkgNames, name)
 	}
 	sort.Strings(pkgNames)
 
-	var packages []sidebarPackage
+	multiPackage := len(pkgNames) > 1
+
+	if multiPackage {
+		// One sidebar group per package
+		var groups []sidebarGroup
+		for _, pkgName := range pkgNames {
+			pkg := result.Packages[pkgName]
+			var items []sidebarGroupItem
+			items = append(items, sidebarGroupItem{Slug: "reference/api"})
+			for _, name := range sortedServiceNames(pkg, cfg.ServiceOrder) {
+				items = append(items, sidebarGroupItem{Slug: "reference/api/" + toKebab(name)})
+			}
+			for _, name := range sortedEnumNames(pkg) {
+				items = append(items, sidebarGroupItem{Slug: "reference/api/enum-" + toKebab(name)})
+			}
+			groups = append(groups, sidebarGroup{
+				Label: formatPackageLabel(pkgName),
+				Items: items,
+			})
+		}
+		return groups
+	}
+
+	// Single package: one "API Reference" group
+	var items []sidebarGroupItem
+	items = append(items, sidebarGroupItem{Slug: "reference/api"})
 	for _, pkgName := range pkgNames {
 		pkg := result.Packages[pkgName]
-
-		var services []sidebarItem
 		for _, name := range sortedServiceNames(pkg, cfg.ServiceOrder) {
-			services = append(services, sidebarItem{Slug: toKebab(name)})
+			items = append(items, sidebarGroupItem{Slug: "reference/api/" + toKebab(name)})
 		}
-
-		var enums []sidebarItem
 		for _, name := range sortedEnumNames(pkg) {
-			enums = append(enums, sidebarItem{Slug: "enum-" + toKebab(name)})
+			items = append(items, sidebarGroupItem{Slug: "reference/api/enum-" + toKebab(name)})
 		}
-
-		packages = append(packages, sidebarPackage{
-			Label:    formatPackageLabel(pkgName),
-			Services: services,
-			Enums:    enums,
-		})
 	}
-
-	return sidebarData{
-		Site:         cfg.Site,
-		Base:         cfg.Base,
-		Title:        cfg.Title,
-		Description:  cfg.Description,
-		Logo:         cfg.Logo,
-		Social:       cfg.Social,
-		EditLink:     cfg.EditLink,
-		CustomPages:  cfg.CustomPages,
-		MultiPackage: len(pkgNames) > 1,
-		Packages:     packages,
-	}
+	return []sidebarGroup{{Label: "API Reference", Items: items}}
 }
 
 // formatPackageLabel converts a proto package name to a sidebar label.

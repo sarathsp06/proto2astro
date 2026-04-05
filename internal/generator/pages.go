@@ -312,17 +312,19 @@ func generatePages(result *parser.ParseResult, cfg *config.Config, outDir string
 		return err
 	}
 
-	// Generate comment guide
+	// Generate comment guide (scaffold-only: skip if file already exists)
 	guideDir := filepath.Join(outDir, "src", "content", "docs", "guides")
 	if err := os.MkdirAll(guideDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir guides dir: %w", err)
 	}
 	guidePath := filepath.Join(guideDir, "comment-guide.md")
-	if err := os.WriteFile(guidePath, []byte(commentGuideMD), 0o644); err != nil {
-		return fmt.Errorf("write comment guide: %w", err)
+	if _, err := os.Stat(guidePath); os.IsNotExist(err) {
+		if err := os.WriteFile(guidePath, []byte(commentGuideMD), 0o644); err != nil {
+			return fmt.Errorf("write comment guide: %w", err)
+		}
 	}
 
-	// Generate root index page (landing page at /)
+	// Generate root index page (scaffold-only: skip if file already exists)
 	rootDocsDir := filepath.Join(outDir, "src", "content", "docs")
 	if err := generateRootIndex(cfg, rootDocsDir); err != nil {
 		return err
@@ -390,7 +392,15 @@ func generateIndexPage(services []ServicePageData, enums []EnumPageData, cfg *co
 }
 
 // generateRootIndex writes the site root landing page at src/content/docs/index.mdx.
+// Scaffold-only: skips if the file already exists so user customizations are preserved.
 func generateRootIndex(cfg *config.Config, rootDocsDir string) error {
+	path := filepath.Join(rootDocsDir, "index.mdx")
+
+	// Skip if already exists (scaffold-only behavior)
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+
 	tmpl, err := template.New("root-index").Funcs(pageFuncMap).Parse(rootIndexMDXTemplate)
 	if err != nil {
 		return fmt.Errorf("parse root index template: %w", err)
@@ -405,7 +415,6 @@ func generateRootIndex(cfg *config.Config, rootDocsDir string) error {
 	oldPath := filepath.Join(rootDocsDir, "index.md")
 	_ = os.Remove(oldPath)
 
-	path := filepath.Join(rootDocsDir, "index.mdx")
 	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create root index: %w", err)

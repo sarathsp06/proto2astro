@@ -95,9 +95,9 @@ func Generate(cfg *config.Config) error {
 		return fmt.Errorf("generate pages: %w", err)
 	}
 
-	// 5. Generate astro.config.mjs
-	fmt.Println("Generating astro.config.mjs...")
-	if err := generateAstroConfig(result, cfg, outDir); err != nil {
+	// 5. Generate proto2astro-config.json (sidebar + site settings)
+	fmt.Println("Generating proto2astro-config.json...")
+	if err := generateProto2AstroConfig(result, cfg, outDir); err != nil {
 		return fmt.Errorf("generate config: %w", err)
 	}
 
@@ -107,9 +107,10 @@ func Generate(cfg *config.Config) error {
 	}
 
 	// Final summary
-	pagesGenerated := totalSvcs + totalEnums + 1 /* index */ + 1 /* comment guide */ + 1 /* landing */
+	pagesGenerated := totalSvcs + totalEnums + 1 /* API index */
 	pagesGenerated += len(cfg.CustomPages)
-	fmt.Printf("\nGeneration complete: %d pages, %d data files\n", pagesGenerated, totalSvcs+totalEnums)
+	fmt.Printf("\nGeneration complete: %d pages regenerated, %d data files\n", pagesGenerated, totalSvcs+totalEnums)
+	fmt.Println("  (landing page and comment guide are scaffold-only — not overwritten)")
 	fmt.Printf("Output directory: %s\n", outDir)
 	fmt.Println("Next steps:")
 	fmt.Println("  1. proto2astro install     (install npm dependencies)")
@@ -119,16 +120,25 @@ func Generate(cfg *config.Config) error {
 }
 
 // generateCustomPages writes custom pages defined in proto2astro.yaml.
+// If a custom page has a Path field, it is used as the full content path
+// (e.g. "deployment/kubernetes" → src/content/docs/deployment/kubernetes.md).
+// Otherwise, falls back to guides/{slug}.md.
 func generateCustomPages(cfg *config.Config, outDir string) error {
 	for _, cp := range cfg.CustomPages {
-		if cp.Slug == "" || cp.Content == "" {
+		if cp.Content == "" {
 			continue
 		}
-		dir := outDir + "/src/content/docs/guides"
-		path := dir + "/" + cp.Slug + ".md"
+		var path string
+		if cp.Path != "" {
+			path = filepath.Join(outDir, "src", "content", "docs", cp.Path+".md")
+		} else if cp.Slug != "" {
+			path = filepath.Join(outDir, "src", "content", "docs", "guides", cp.Slug+".md")
+		} else {
+			continue
+		}
 		content := fmt.Sprintf("---\ntitle: %s\n---\n\n%s\n", cp.Title, cp.Content)
 		if err := writeFileEnsureDir(path, []byte(content)); err != nil {
-			return fmt.Errorf("write custom page %s: %w", cp.Slug, err)
+			return fmt.Errorf("write custom page %s: %w", cp.Title, err)
 		}
 	}
 	return nil

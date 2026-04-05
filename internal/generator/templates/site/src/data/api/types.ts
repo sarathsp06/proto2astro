@@ -43,7 +43,7 @@ export interface ApiService {
   /** Proto service name (e.g., "WebhookService") */
   service: string;
   /** Proto package name (e.g., "webhook.v1") */
-  package: string;
+  package?: string;
   /** One-paragraph description shown at top of page */
   description: string;
   /** Optional markdown content rendered after description (e.g., tables, notes) */
@@ -67,7 +67,7 @@ export interface ApiEnum {
   /** Enum name (e.g., "WebhookStatus") */
   name: string;
   /** Proto package name (e.g., "webhook.v1") */
-  package: string;
+  package?: string;
   /** Description of the enum */
   description: string;
   /** All values in this enum */

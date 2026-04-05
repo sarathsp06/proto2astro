@@ -18,6 +18,15 @@ type Config struct {
 	// Output
 	OutDir string `yaml:"out_dir"` // default: "./docs"
 
+	// Sidebar customization
+	Sidebar SidebarConfig `yaml:"sidebar"`
+
+	// Starlight component overrides (e.g. Footer: "./src/components/Footer.astro")
+	Components map[string]string `yaml:"components"`
+
+	// Additional CSS files beyond the default custom.css
+	CustomCSS []string `yaml:"custom_css"`
+
 	// Overlay
 	ServiceOrder []string                  `yaml:"service_order"`
 	EntityTypes  []string                  `yaml:"entity_types"`
@@ -63,9 +72,30 @@ type OverlayField struct {
 	Required    *bool  `yaml:"required"`
 }
 
-// CustomPage defines an additional page to add to the sidebar.
+// CustomPage defines an additional page to add to the docs.
 type CustomPage struct {
 	Title   string `yaml:"title"`
 	Slug    string `yaml:"slug"`
+	Path    string `yaml:"path"`    // full content path (e.g. "deployment/kubernetes"); overrides slug
 	Content string `yaml:"content"` // markdown content
+}
+
+// SidebarConfig defines custom sidebar sections rendered around the auto-generated API Reference.
+type SidebarConfig struct {
+	// Sections rendered before the auto-generated API Reference group
+	Before []SidebarSection `yaml:"before"`
+	// Sections rendered after the auto-generated API Reference group
+	After []SidebarSection `yaml:"after"`
+}
+
+// SidebarSection is a named sidebar group with ordered items.
+type SidebarSection struct {
+	Label string        `yaml:"label"`
+	Items []SidebarItem `yaml:"items"`
+}
+
+// SidebarItem is a single page entry in a sidebar section.
+type SidebarItem struct {
+	Label string `yaml:"label"` // optional display label
+	Slug  string `yaml:"slug"`  // content slug (e.g. "getting-started/installation")
 }
