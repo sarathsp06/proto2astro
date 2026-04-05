@@ -26,6 +26,9 @@ var (
 )
 
 // extractComment joins leading comment lines into a single string.
+// Fenced @example blocks (delimited by ```) are collapsed into a single
+// @example annotation before joining so that multi-line JSON examples
+// are preserved as a single value.
 func extractComment(c *proto.Comment) string {
 	if c == nil {
 		return ""
@@ -36,6 +39,7 @@ func extractComment(c *proto.Comment) string {
 		line = strings.TrimPrefix(line, " ")
 		lines = append(lines, line)
 	}
+	lines = processExampleBlocks(lines)
 	return joinCommentLines(lines)
 }
 
@@ -69,6 +73,55 @@ func joinCommentLines(lines []string) string {
 		result = append(result, strings.Join(current, " "))
 	}
 	return strings.Join(result, " ")
+}
+
+// processExampleBlocks detects fenced @example blocks in comment lines
+// and collapses them into a single @example annotation line.
+//
+// A fenced block starts with a line matching "@example ```" and ends with
+// a line that is exactly "```". The lines between the fences are joined
+// with spaces to produce a single-line value that extractExample can parse.
+//
+// Example input:
+//
+//	["Schema definition.", "@example ```", "{", `  "type": "object"`, "}", "```"]
+//
+// Output:
+//
+//	["Schema definition.", `@example { "type": "object" }`]
+func processExampleBlocks(lines []string) []string {
+	var result []string
+	i := 0
+	for i < len(lines) {
+		line := lines[i]
+		// Check for @example ``` (with optional trailing whitespace)
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "@example") {
+			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "@example"))
+			if rest == "```" {
+				// Fenced block — collect lines until closing ```
+				var blockLines []string
+				i++
+				for i < len(lines) {
+					bl := strings.TrimSpace(lines[i])
+					if bl == "```" {
+						i++
+						break
+					}
+					blockLines = append(blockLines, bl)
+					i++
+				}
+				if len(blockLines) > 0 {
+					content := strings.Join(blockLines, " ")
+					result = append(result, "@example "+content)
+				}
+				continue
+			}
+		}
+		result = append(result, line)
+		i++
+	}
+	return result
 }
 
 // extractRequired checks if a comment contains the Required keyword or @required annotation.

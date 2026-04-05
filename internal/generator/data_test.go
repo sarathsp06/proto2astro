@@ -3,6 +3,7 @@ package generator
 import (
 	"testing"
 
+	"github.com/sarathsp06/proto2astro/internal/config"
 	"github.com/sarathsp06/proto2astro/internal/parser"
 )
 
@@ -270,5 +271,123 @@ func TestFormatPackageLabel(t *testing.T) {
 				t.Errorf("formatPackageLabel(%q) = %q, want %q", tt.pkg, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestBuildFlatField_EntityExamples(t *testing.T) {
+	entityExamples := map[string]any{
+		"ItemDetail": map[string]any{
+			"id":     "item-abc",
+			"status": "active",
+		},
+	}
+
+	tests := []struct {
+		name           string
+		field          parser.ProtoField
+		entityExamples map[string]any
+		wantExample    any
+	}{
+		{
+			name: "entity example used as fallback",
+			field: parser.ProtoField{
+				Name:      "item",
+				Type:      "ItemDetail",
+				RawType:   "ItemDetail",
+				IsMessage: true,
+			},
+			entityExamples: entityExamples,
+			wantExample:    entityExamples["ItemDetail"],
+		},
+		{
+			name: "proto example takes precedence over entity example",
+			field: parser.ProtoField{
+				Name:      "item",
+				Type:      "ItemDetail",
+				RawType:   "ItemDetail",
+				IsMessage: true,
+				Example:   "custom-example",
+			},
+			entityExamples: entityExamples,
+			wantExample:    "custom-example",
+		},
+		{
+			name: "no entity example for unknown type",
+			field: parser.ProtoField{
+				Name:      "user",
+				Type:      "UserProfile",
+				RawType:   "UserProfile",
+				IsMessage: true,
+			},
+			entityExamples: entityExamples,
+			wantExample:    nil,
+		},
+		{
+			name: "non-message field ignores entity examples",
+			field: parser.ProtoField{
+				Name:    "name",
+				Type:    "string",
+				RawType: "string",
+			},
+			entityExamples: entityExamples,
+			wantExample:    nil,
+		},
+		{
+			name: "nil entity examples map",
+			field: parser.ProtoField{
+				Name:      "item",
+				Type:      "ItemDetail",
+				RawType:   "ItemDetail",
+				IsMessage: true,
+			},
+			entityExamples: nil,
+			wantExample:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ov := config.OverlayField{}
+			got := buildFlatField(tt.field, tt.field.Name, ov, tt.entityExamples)
+			if tt.wantExample == nil && got.Example != nil {
+				t.Errorf("expected nil example, got %v", got.Example)
+			} else if tt.wantExample != nil && got.Example == nil {
+				t.Errorf("expected example %v, got nil", tt.wantExample)
+			}
+			// For non-nil cases, verify the example is the expected value
+			if tt.wantExample != nil && got.Example != nil {
+				// Simple string comparison for the proto-example-takes-precedence case
+				if s, ok := tt.wantExample.(string); ok {
+					if gs, ok := got.Example.(string); ok && gs != s {
+						t.Errorf("expected example %q, got %q", s, gs)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestBuildFlatField_OverlayExampleTakesPrecedence(t *testing.T) {
+	entityExamples := map[string]any{
+		"ItemDetail": map[string]any{"id": "fallback"},
+	}
+	trueBool := true
+	ov := config.OverlayField{
+		Example:  "overlay-value",
+		Required: &trueBool,
+	}
+	field := parser.ProtoField{
+		Name:      "item",
+		Type:      "ItemDetail",
+		RawType:   "ItemDetail",
+		IsMessage: true,
+	}
+
+	got := buildFlatField(field, "item", ov, entityExamples)
+	if got.Example != "overlay-value" {
+		t.Errorf("overlay example should take precedence, got %v", got.Example)
+	}
+	if !got.Required {
+		t.Error("overlay required should be applied")
 	}
 }

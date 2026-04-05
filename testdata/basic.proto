@@ -66,6 +66,11 @@ message UpdateItemRequest {
   string name = 2;
   // New count value. @range 1-200 @default 100 @example 42
   int32 count = 3;
+  // JSON metadata for the item.
+  // @example ```
+  // {"key": "value", "count": 1}
+  // ```
+  string metadata = 4;
 }
 
 // UpdateItemResponse is the response from updating an item.

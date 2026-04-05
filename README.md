@@ -230,6 +230,16 @@ entity_types:
   - PaymentIntent
   - Customer
 
+# ── Entity type examples ─────────────────────────
+# Fallback examples for entity types (used when no @example in proto or overlay).
+entity_examples:
+  PaymentIntent:
+    id: "pi_abc123"
+    amount: 2500
+  Customer:
+    id: "cus_xyz789"
+    email: "alice@example.com"
+
 # ── Scaffold control ────────────────────────────
 # Disable scaffold-only files you don't need.
 # Both default to true. Route collisions with src/pages/ are also detected.
@@ -291,6 +301,7 @@ custom_pages:
 | `custom_css` | list | | Additional CSS files beyond the default `custom.css` |
 | `service_order` | list | | Explicit sidebar ordering for services |
 | `entity_types` | list | | Message types that should not be flattened |
+| `entity_examples` | map | | Fallback examples for entity types (keyed by message name) |
 | `scaffold.landing_page` | bool | `true` | Generate the root landing page (`index.mdx`) |
 | `scaffold.comment_guide` | bool | `true` | Generate the comment guide (`guides/comment-guide.md`) |
 | `services` | map | | Per-service overrides (descriptions, examples, fields) |
@@ -323,6 +334,18 @@ message CreateUserRequest {
 }
 ```
 
+For complex JSON values, use fenced `@example` blocks with triple backticks:
+
+```protobuf
+message UpdateItemRequest {
+  // JSON metadata for the item.
+  // @example ```
+  // {"key": "value", "count": 1}
+  // ```
+  string metadata = 4;
+}
+```
+
 | Annotation | What it does |
 |---|---|
 | `@required` | Marks the field as required |
@@ -331,6 +354,7 @@ message CreateUserRequest {
 | `@range MIN-MAX` | Shows allowed range constraint |
 | `@error CODE desc` | Lists error codes on the RPC |
 | `@example VALUE` | Uses the value in generated curl examples |
+| `@example` ` ``` ` ... ` ``` ` | Multi-line example (fenced block, joined into one value) |
 
 > **Legacy syntax** — `Required.`, `Deprecated:`, `Default:`, `Range:`, and `Errors:` patterns are still supported for backward compatibility.
 

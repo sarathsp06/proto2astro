@@ -296,3 +296,89 @@ func TestHasDeprecatedOption(t *testing.T) {
 		t.Errorf("hasDeprecatedOption(nil) = %v, want false", got)
 	}
 }
+
+func TestProcessExampleBlocks(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines []string
+		want  []string
+	}{
+		{
+			name:  "no fenced block",
+			lines: []string{"A description.", `@example "hello"`},
+			want:  []string{"A description.", `@example "hello"`},
+		},
+		{
+			name:  "fenced JSON block",
+			lines: []string{"Schema definition.", "@example ```", `{`, `  "type": "object"`, `}`, "```"},
+			want:  []string{"Schema definition.", `@example { "type": "object" }`},
+		},
+		{
+			name:  "fenced block with whitespace in opening",
+			lines: []string{"Desc.", "@example  ```", "value", "```"},
+			want:  []string{"Desc.", "@example value"},
+		},
+		{
+			name:  "empty fenced block",
+			lines: []string{"Desc.", "@example ```", "```"},
+			want:  []string{"Desc."},
+		},
+		{
+			name:  "fenced block at start",
+			lines: []string{"@example ```", `{"id": "123"}`, "```"},
+			want:  []string{`@example {"id": "123"}`},
+		},
+		{
+			name:  "no fenced block at all",
+			lines: []string{"A description.", "More text."},
+			want:  []string{"A description.", "More text."},
+		},
+		{
+			name:  "unclosed fenced block collects to end",
+			lines: []string{"Desc.", "@example ```", "line1", "line2"},
+			want:  []string{"Desc.", "@example line1 line2"},
+		},
+		{
+			name:  "multi-line JSON object",
+			lines: []string{"Config.", "@example ```", `{`, `  "name": "test",`, `  "count": 5`, `}`, "```"},
+			want:  []string{"Config.", `@example { "name": "test", "count": 5 }`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := processExampleBlocks(tt.lines)
+			if len(got) != len(tt.want) {
+				t.Errorf("processExampleBlocks() = %v (len %d), want %v (len %d)",
+					got, len(got), tt.want, len(tt.want))
+				return
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("processExampleBlocks()[%d] = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestExtractExample_FencedBlock(t *testing.T) {
+	// Test that a fenced @example block, after processing by
+	// processExampleBlocks + joinCommentLines, produces a valid example.
+	lines := []string{"JSON schema.", "@example ```", `{`, `  "type": "object"`, `}`, "```"}
+	processed := processExampleBlocks(lines)
+	joined := joinCommentLines(processed)
+	got := extractExample(joined)
+
+	// The fenced content should be parsed as JSON
+	if got == nil {
+		t.Fatal("extractExample returned nil for fenced block")
+	}
+	m, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T: %v", got, got)
+	}
+	if m["type"] != "object" {
+		t.Errorf("expected type=object, got %v", m["type"])
+	}
+}

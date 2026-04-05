@@ -31,10 +31,11 @@ type Config struct {
 	Scaffold ScaffoldConfig `yaml:"scaffold"`
 
 	// Overlay
-	ServiceOrder []string                  `yaml:"service_order"`
-	EntityTypes  []string                  `yaml:"entity_types"`
-	Services     map[string]OverlayService `yaml:"services"`
-	CustomPages  []CustomPage              `yaml:"custom_pages"`
+	ServiceOrder   []string                  `yaml:"service_order"`
+	EntityTypes    []string                  `yaml:"entity_types"`
+	EntityExamples map[string]any            `yaml:"entity_examples"`
+	Services       map[string]OverlayService `yaml:"services"`
+	CustomPages    []CustomPage              `yaml:"custom_pages"`
 }
 
 // Link represents a social/external link.

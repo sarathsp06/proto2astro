@@ -52,6 +52,12 @@ func TestGenerateIntegration(t *testing.T) {
 			Paths: []string{protoFile},
 		},
 		EntityTypes: []string{"ItemDetail"},
+		EntityExamples: map[string]any{
+			"ItemDetail": map[string]any{
+				"id":     "item-fallback",
+				"status": "active",
+			},
+		},
 	}
 	cfg.ApplyDefaults()
 
@@ -185,6 +191,22 @@ func TestGenerateIntegration(t *testing.T) {
 	// Verify entity type (ItemDetail) is NOT flattened — appears as a single field
 	if !strings.Contains(svcContent, `"ItemDetail"`) {
 		t.Error("service data should contain ItemDetail as entity type (not flattened)")
+	}
+
+	// Phase 5: Verify multi-line @example (fenced block) produces valid example data
+	// The metadata field in UpdateItemRequest uses a fenced @example block
+	if !strings.Contains(svcContent, `"metadata"`) {
+		t.Error("service data should contain metadata field from UpdateItemRequest")
+	}
+	// The fenced example should produce a parsed JSON object with "key" and "count"
+	if !strings.Contains(svcContent, `"key"`) || !strings.Contains(svcContent, `"value"`) {
+		t.Error("service data should contain parsed fenced @example JSON for metadata field")
+	}
+
+	// Phase 5: Verify entity_examples config provides fallback examples
+	// ItemDetail is an entity type with entity_examples configured
+	if !strings.Contains(svcContent, `"item-fallback"`) {
+		t.Error("service data should contain entity example fallback value for ItemDetail")
 	}
 }
 

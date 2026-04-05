@@ -102,7 +102,7 @@ func buildTSRPC(rpc parser.ProtoRPC, pkg *parser.ProtoPackage, cfg *config.Confi
 
 	// Request fields
 	if reqMsg := pkg.Messages[rpc.RequestType]; reqMsg != nil {
-		reqFields := flattenFields(reqMsg, pkg, cfg.EntityTypes, "", rpcOverlay.Fields)
+		reqFields := flattenFields(reqMsg, pkg, cfg.EntityTypes, "", rpcOverlay.Fields, cfg.EntityExamples)
 		for _, f := range reqFields {
 			ts.Request = append(ts.Request, toTSField(f))
 		}
@@ -110,7 +110,7 @@ func buildTSRPC(rpc parser.ProtoRPC, pkg *parser.ProtoPackage, cfg *config.Confi
 
 	// Response fields
 	if respMsg := pkg.Messages[rpc.ResponseType]; respMsg != nil {
-		respFields := flattenFields(respMsg, pkg, cfg.EntityTypes, "", rpcOverlay.Fields)
+		respFields := flattenFields(respMsg, pkg, cfg.EntityTypes, "", rpcOverlay.Fields, cfg.EntityExamples)
 		for _, f := range respFields {
 			ts.Response = append(ts.Response, toTSField(f))
 		}
@@ -217,14 +217,15 @@ type flatField struct {
 
 // flattenFields recursively flattens message fields using dot-notation.
 // Entity types (from config) are NOT flattened — they appear as a single field.
-func flattenFields(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTypes []string, prefix string, overlayFields map[string]config.OverlayField) []flatField {
-	return flattenFieldsWithSeen(msg, pkg, entityTypes, prefix, overlayFields, nil)
+// entityExamples provides fallback examples for entity type fields.
+func flattenFields(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTypes []string, prefix string, overlayFields map[string]config.OverlayField, entityExamples map[string]any) []flatField {
+	return flattenFieldsWithSeen(msg, pkg, entityTypes, prefix, overlayFields, entityExamples, nil)
 }
 
 // flattenFieldsWithSeen is the recursive implementation with cycle detection.
 // The seen map tracks message type names currently being expanded to prevent
 // infinite recursion from self-referencing or mutually-recursive types.
-func flattenFieldsWithSeen(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTypes []string, prefix string, overlayFields map[string]config.OverlayField, seen map[string]bool) []flatField {
+func flattenFieldsWithSeen(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, entityTypes []string, prefix string, overlayFields map[string]config.OverlayField, entityExamples map[string]any, seen map[string]bool) []flatField {
 	if seen == nil {
 		seen = make(map[string]bool)
 	}
@@ -248,7 +249,7 @@ func flattenFieldsWithSeen(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, e
 			// Cycle detection: skip if we're already expanding this type
 			if seen[f.RawType] {
 				// Emit as a non-flattened reference to break the cycle
-				fields = append(fields, buildFlatField(f, fullName, ov))
+				fields = append(fields, buildFlatField(f, fullName, ov, entityExamples))
 				continue
 			}
 			subMsg, ok := pkg.Messages[f.RawType]
@@ -258,20 +259,22 @@ func flattenFieldsWithSeen(msg *parser.ProtoMessage, pkg *parser.ProtoPackage, e
 				if f.IsRepeated {
 					subPrefix = fullName + "[]"
 				}
-				subFields := flattenFieldsWithSeen(subMsg, pkg, entityTypes, subPrefix, overlayFields, seen)
+				subFields := flattenFieldsWithSeen(subMsg, pkg, entityTypes, subPrefix, overlayFields, entityExamples, seen)
 				fields = append(fields, subFields...)
 				delete(seen, f.RawType) // allow this type in other branches
 				continue
 			}
 		}
 
-		fields = append(fields, buildFlatField(f, fullName, ov))
+		fields = append(fields, buildFlatField(f, fullName, ov, entityExamples))
 	}
 	return fields
 }
 
 // buildFlatField constructs a flatField from a parser field and its overlay.
-func buildFlatField(f parser.ProtoField, fullName string, ov config.OverlayField) flatField {
+// entityExamples provides fallback examples for entity type fields when no
+// example is set via proto comment or overlay.
+func buildFlatField(f parser.ProtoField, fullName string, ov config.OverlayField, entityExamples map[string]any) flatField {
 	desc := f.Description
 	if ov.Description != "" {
 		desc = ov.Description
@@ -286,6 +289,12 @@ func buildFlatField(f parser.ProtoField, fullName string, ov config.OverlayField
 	example := f.Example
 	if ov.Example != nil {
 		example = ov.Example
+	}
+	// Fallback: use entity example from config for entity type fields
+	if example == nil && f.IsMessage && entityExamples != nil {
+		if entEx, ok := entityExamples[f.RawType]; ok {
+			example = entEx
+		}
 	}
 
 	typeName := f.Type

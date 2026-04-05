@@ -248,6 +248,20 @@ bool active = 3;
 
 JSON values are parsed automatically. If parsing fails, the value is treated as a string.
 
+#### Multi-line examples
+
+For complex JSON values, use a fenced block with triple backticks:
+
+` + "```" + `protobuf
+// JSON metadata for the item.
+// @example ` + "```" + `
+// {"key": "value", "count": 1}
+// ` + "```" + `
+string metadata = 4;
+` + "```" + `
+
+The lines between the fences are joined into a single value and parsed as JSON.
+
 ## Complete Example
 
 ` + "```" + `protobuf
