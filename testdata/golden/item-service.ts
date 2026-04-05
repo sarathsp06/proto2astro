@@ -13,13 +13,13 @@ const service: ApiService = {
           "name": "name",
           "type": "string",
           "required": true,
-          "description": "Required. The name of the item. @example \"My Item\"",
+          "description": "The name of the item.",
           "example": "My Item"
         },
         {
           "name": "count",
           "type": "int32",
-          "description": "A description with HTML chars: values < 100 & > 0. Default: 50. Range: 1-100.",
+          "description": "A description with HTML chars: values < 100 & > 0.",
           "example": 50
         },
         {

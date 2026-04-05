@@ -29,10 +29,10 @@ message ItemDetail {
 
 // CreateItemRequest is the request to create an item.
 message CreateItemRequest {
-  // Required. The name of the item. @example "My Item"
+  // @required The name of the item. @example "My Item"
   string name = 1;
   // A description with HTML chars: values < 100 & > 0.
-  // Default: 50. Range: 1-100.
+  // @default 50 @range 1-100
   int32 count = 2;
   // Priority level for the item.
   Priority priority = 3;
@@ -48,7 +48,7 @@ message CreateItemResponse {
 
 // GetItemRequest is the request to get an item.
 message GetItemRequest {
-  // Required. The item ID. @example "item-123"
+  // @required The item ID. @example "item-123"
   string id = 1;
 }
 
@@ -82,8 +82,8 @@ message UpdateItemResponse {
 // ItemService manages items.
 service ItemService {
   // CreateItem creates a new item.
-  // Errors: ALREADY_EXISTS if an item with the same name exists.
-  // Errors: INVALID_ARGUMENT if the name is empty.
+  // @error ALREADY_EXISTS if an item with the same name exists.
+  // @error INVALID_ARGUMENT if the name is empty.
   rpc CreateItem(CreateItemRequest) returns (CreateItemResponse);
 
   // GetItem retrieves an existing item by ID.

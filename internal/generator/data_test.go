@@ -13,28 +13,15 @@ func TestCleanDescription(t *testing.T) {
 		desc string
 		want string
 	}{
-		{"strips Required. prefix", "Required. The URL.", "The URL."},
-		{"strips Required prefix", "Required The URL.", "The URL."},
-		{"no Required", "The webhook URL.", "The webhook URL."},
+		{"no annotations", "The webhook URL.", "The webhook URL."},
 		{"empty", "", ""},
 		{"only whitespace", "   ", ""},
-		// Annotations ARE now stripped after Phase 2 fix.
+		// @-prefix annotations are stripped.
 		{
 			"strips @example from description",
 			`The item name. @example "test"`,
 			"The item name.",
 		},
-		{
-			"strips Default: from description",
-			"Max retries. Default: 5.",
-			"Max retries.",
-		},
-		{
-			"strips Range: from description",
-			"Page size. Range: 1-100.",
-			"Page size.",
-		},
-		// @-prefix annotations
 		{
 			"strips @required from description",
 			"@required The item ID to update.",
@@ -59,6 +46,22 @@ func TestCleanDescription(t *testing.T) {
 			"strips multiple @-prefix annotations",
 			"@required Count. @range 1-100 @default 50 @example 25",
 			"Count.",
+		},
+		// Legacy patterns are NOT stripped (no longer supported).
+		{
+			"does not strip legacy Required. prefix",
+			"Required. The URL.",
+			"Required. The URL.",
+		},
+		{
+			"does not strip legacy Default:",
+			"Max retries. Default: 5.",
+			"Max retries. Default: 5.",
+		},
+		{
+			"does not strip legacy Range:",
+			"Page size. Range: 1-100.",
+			"Page size. Range: 1-100.",
 		},
 	}
 

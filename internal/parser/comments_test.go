@@ -59,16 +59,12 @@ func TestExtractRequired(t *testing.T) {
 		comment string
 		want    bool
 	}{
-		{"contains Required", "Required. The URL to deliver events to.", true},
-		{"Required at end", "The URL is Required", true},
-		{"no Required", "The webhook endpoint URL.", false},
-		{"lowercase required", "This field is required.", false},
-		{"empty", "", false},
-		{"Required in middle", "This field is Required for the webhook.", true},
-		// @-prefix syntax
 		{"@required annotation", "@required The webhook endpoint URL.", true},
 		{"@required in middle", "The URL. @required field.", true},
 		{"@requiredfoo no match", "This has @requiredfoo which is not valid.", false},
+		{"no @required", "The webhook endpoint URL.", false},
+		{"empty", "", false},
+		{"bare Required word", "Required. The URL.", false},
 	}
 
 	for _, tt := range tests {
@@ -87,17 +83,13 @@ func TestExtractDeprecated(t *testing.T) {
 		comment string
 		want    bool
 	}{
-		{"starts with Deprecated:", "Deprecated: Use new_field instead.", true},
-		{"case insensitive", "deprecated: old field", true},
-		{"not at start", "This field is Deprecated: use other.", false},
-		{"no deprecated", "The webhook URL.", false},
-		{"empty", "", false},
-		{"leading whitespace", "  Deprecated: old", true},
-		// @-prefix syntax
 		{"@deprecated annotation", "@deprecated Use new_field instead.", true},
 		{"@deprecated case insensitive", "@Deprecated Use old.", true},
 		{"@deprecated not at start", "This field is @deprecated.", false},
 		{"@deprecated with whitespace", "  @deprecated old field", true},
+		{"no deprecated", "The webhook URL.", false},
+		{"empty", "", false},
+		{"legacy Deprecated: not matched", "Deprecated: Use new_field instead.", false},
 	}
 
 	for _, tt := range tests {
@@ -116,17 +108,13 @@ func TestExtractDefault(t *testing.T) {
 		comment string
 		want    string
 	}{
-		{"with period", "Maximum retries. Default: 5.", "5"},
-		{"without period", "Default: 50", "50"},
-		{"string value", "Default: active.", "active"},
-		{"no default", "The webhook URL.", ""},
-		{"empty", "", ""},
-		{"default in middle", "Some text. Default: hello. More text.", "hello"},
-		// @-prefix syntax
 		{"@default numeric", "Max retries. @default 5", "5"},
 		{"@default string", "Name. @default Untitled", "Untitled"},
 		{"@default with other annotations", "Count. @default 100 @example 42", "100"},
 		{"@default quoted", `URL. @default "https://localhost"`, `"https://localhost"`},
+		{"no default", "The webhook URL.", ""},
+		{"empty", "", ""},
+		{"legacy Default: not matched", "Default: 50", ""},
 	}
 
 	for _, tt := range tests {
@@ -146,14 +134,12 @@ func TestExtractRange(t *testing.T) {
 		wantMin string
 		wantMax string
 	}{
-		{"basic range", "Items per page. Range: 1-100.", "1", "100."},
-		{"range with spaces", "Range: 0 - 255", "0", "255"},
-		{"no range", "The webhook URL.", "", ""},
-		{"empty", "", "", ""},
-		// @-prefix syntax
 		{"@range basic", "Count. @range 1-200", "1", "200"},
 		{"@range with spaces", "@range 0 - 100", "0", "100"},
 		{"@range with trailing period", "Size. @range 1-50.", "1", "50."},
+		{"no range", "The webhook URL.", "", ""},
+		{"empty", "", "", ""},
+		{"legacy Range: not matched", "Range: 1-100.", "", ""},
 	}
 
 	for _, tt := range tests {
@@ -208,21 +194,11 @@ func TestSplitRPCComment(t *testing.T) {
 			wantErrors: nil,
 		},
 		{
-			name:     "with errors",
-			comment:  "Create a new webhook. Errors: ALREADY_EXISTS if a webhook with the same URL exists. Errors: INVALID_ARGUMENT if the URL is malformed.",
-			wantDesc: "Create a new webhook.",
-			wantErrors: []ProtoError{
-				{Code: "ALREADY_EXISTS", Description: "A webhook with the same URL exists."},
-				{Code: "INVALID_ARGUMENT", Description: "The URL is malformed."},
-			},
-		},
-		{
 			name:       "empty",
 			comment:    "",
 			wantDesc:   "",
 			wantErrors: nil,
 		},
-		// @-prefix syntax
 		{
 			name:     "@error annotations",
 			comment:  "Update an item. @error NOT_FOUND if the item does not exist. @error INVALID_ARGUMENT if the name is empty.",
@@ -233,12 +209,11 @@ func TestSplitRPCComment(t *testing.T) {
 			},
 		},
 		{
-			name:     "mixed @error and Errors:",
-			comment:  "Process request. @error NOT_FOUND if missing. Errors: ALREADY_EXISTS if duplicate.",
-			wantDesc: "Process request.",
+			name:     "single @error",
+			comment:  "Create an item. @error ALREADY_EXISTS if the name is taken.",
+			wantDesc: "Create an item.",
 			wantErrors: []ProtoError{
-				{Code: "NOT_FOUND", Description: "Missing."},
-				{Code: "ALREADY_EXISTS", Description: "Duplicate."},
+				{Code: "ALREADY_EXISTS", Description: "The name is taken."},
 			},
 		},
 	}

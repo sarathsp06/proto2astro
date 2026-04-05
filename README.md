@@ -356,8 +356,6 @@ message UpdateItemRequest {
 | `@example VALUE` | Uses the value in generated curl examples |
 | `@example` ` ``` ` ... ` ``` ` | Multi-line example (fenced block, joined into one value) |
 
-> **Legacy syntax** — `Required.`, `Deprecated:`, `Default:`, `Range:`, and `Errors:` patterns are still supported for backward compatibility.
-
 ## Customizing the Site
 
 The generated site is a standard Astro Starlight project. You can edit components, styles, and pages directly.

@@ -41,13 +41,13 @@ func TestMarshalServiceTS_Golden(t *testing.T) {
 						Name:        "name",
 						Type:        "string",
 						Required:    true,
-						Description: `Required. The name of the item. @example "My Item"`,
+						Description: "The name of the item.",
 						Example:     "My Item",
 					},
 					{
 						Name:        "count",
 						Type:        "int32",
-						Description: "A description with HTML chars: values < 100 & > 0. Default: 50. Range: 1-100.",
+						Description: "A description with HTML chars: values < 100 & > 0.",
 						Example:     float64(50),
 					},
 					{

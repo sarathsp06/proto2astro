@@ -126,18 +126,10 @@ func TestGenerateIntegration(t *testing.T) {
 		t.Error("service data should not contain \\u0026 (HTML escaping should be disabled)")
 	}
 
-	// Verify bug #2+#7 fix: @example, Default:, Range: are stripped from descriptions
+	// Verify annotations are stripped from descriptions
 	if strings.Contains(svcContent, `@example`) {
 		t.Error("service data descriptions should not contain @example (should be stripped)")
 	}
-	if strings.Contains(svcContent, `Default:`) {
-		t.Error("service data descriptions should not contain Default: (should be stripped)")
-	}
-	if strings.Contains(svcContent, `Range:`) {
-		t.Error("service data descriptions should not contain Range: (should be stripped)")
-	}
-
-	// Verify Phase 3: @-prefix annotations are stripped from descriptions
 	if strings.Contains(svcContent, `@required`) {
 		t.Error("service data descriptions should not contain @required (should be stripped)")
 	}
@@ -148,7 +140,7 @@ func TestGenerateIntegration(t *testing.T) {
 		t.Error("service data descriptions should not contain @range (should be stripped)")
 	}
 
-	// Verify Phase 3: @error annotations produce error entries for UpdateItem
+	// Verify @error annotations produce error entries for UpdateItem
 	if !strings.Contains(svcContent, `"NOT_FOUND"`) {
 		t.Error("service data should contain NOT_FOUND error code from @error annotation")
 	}
@@ -156,7 +148,7 @@ func TestGenerateIntegration(t *testing.T) {
 		t.Error("service data should contain UpdateItem RPC")
 	}
 
-	// Verify Phase 3: @required fields are marked required
+	// Verify @required fields are marked required
 	// The UpdateItem.id field uses @required — verify it shows required: true
 	if !strings.Contains(svcContent, `"required": true`) {
 		t.Error("service data should have required: true for @required fields")
@@ -451,7 +443,7 @@ func TestDetectRouteCollision(t *testing.T) {
 	} else if !strings.Contains(got, "index.astro") {
 		t.Errorf("collision path should mention index.astro, got %q", got)
 	}
-	os.Remove(astroFile)
+	_ = os.Remove(astroFile)
 
 	// Collision with .tsx file
 	tsxFile := filepath.Join(pagesDir, "index.tsx")
@@ -461,7 +453,7 @@ func TestDetectRouteCollision(t *testing.T) {
 	if got := detectRouteCollision(dir, "index"); got == "" {
 		t.Error("expected collision with index.tsx")
 	}
-	os.Remove(tsxFile)
+	_ = os.Remove(tsxFile)
 
 	// No collision for different name
 	if got := detectRouteCollision(dir, "about"); got != "" {

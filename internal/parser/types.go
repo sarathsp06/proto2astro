@@ -19,8 +19,8 @@ type ProtoField struct {
 	IsMessage   bool   // whether the type references a message
 	IsEnum      bool   // whether the type references an enum
 	// Extended comment annotations
-	DefaultValue string // from "Default: VALUE" pattern
-	RangeMin     string // from "Range: MIN-MAX" pattern
+	DefaultValue string // from "@default VALUE" annotation
+	RangeMin     string // from "@range MIN-MAX" annotation
 	RangeMax     string
 	Example      any // from "@example VALUE" annotation
 }

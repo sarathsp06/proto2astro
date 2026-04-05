@@ -284,18 +284,6 @@ message CreateUserRequest {
   string name = 4;
 }
 ` + "```" + `
-
-## Legacy Syntax
-
-The following legacy patterns are still supported for backward compatibility:
-
-| Legacy | Preferred |
-|--------|-----------|
-| ` + "`Required.`" + ` / ` + "`Required `" + ` | ` + "`@required`" + ` |
-| ` + "`Deprecated: reason`" + ` | ` + "`@deprecated reason`" + ` |
-| ` + "`Default: VALUE.`" + ` | ` + "`@default VALUE`" + ` |
-| ` + "`Range: MIN-MAX`" + ` | ` + "`@range MIN-MAX`" + ` |
-| ` + "`Errors: CODE desc`" + ` | ` + "`@error CODE desc`" + ` |
 `
 
 // generatePages generates MDX stubs, index page, and comment guide.
