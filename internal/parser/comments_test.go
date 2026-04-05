@@ -65,6 +65,10 @@ func TestExtractRequired(t *testing.T) {
 		{"lowercase required", "This field is required.", false},
 		{"empty", "", false},
 		{"Required in middle", "This field is Required for the webhook.", true},
+		// @-prefix syntax
+		{"@required annotation", "@required The webhook endpoint URL.", true},
+		{"@required in middle", "The URL. @required field.", true},
+		{"@requiredfoo no match", "This has @requiredfoo which is not valid.", false},
 	}
 
 	for _, tt := range tests {
@@ -89,6 +93,11 @@ func TestExtractDeprecated(t *testing.T) {
 		{"no deprecated", "The webhook URL.", false},
 		{"empty", "", false},
 		{"leading whitespace", "  Deprecated: old", true},
+		// @-prefix syntax
+		{"@deprecated annotation", "@deprecated Use new_field instead.", true},
+		{"@deprecated case insensitive", "@Deprecated Use old.", true},
+		{"@deprecated not at start", "This field is @deprecated.", false},
+		{"@deprecated with whitespace", "  @deprecated old field", true},
 	}
 
 	for _, tt := range tests {
@@ -113,6 +122,11 @@ func TestExtractDefault(t *testing.T) {
 		{"no default", "The webhook URL.", ""},
 		{"empty", "", ""},
 		{"default in middle", "Some text. Default: hello. More text.", "hello"},
+		// @-prefix syntax
+		{"@default numeric", "Max retries. @default 5", "5"},
+		{"@default string", "Name. @default Untitled", "Untitled"},
+		{"@default with other annotations", "Count. @default 100 @example 42", "100"},
+		{"@default quoted", `URL. @default "https://localhost"`, `"https://localhost"`},
 	}
 
 	for _, tt := range tests {
@@ -136,6 +150,10 @@ func TestExtractRange(t *testing.T) {
 		{"range with spaces", "Range: 0 - 255", "0", "255"},
 		{"no range", "The webhook URL.", "", ""},
 		{"empty", "", "", ""},
+		// @-prefix syntax
+		{"@range basic", "Count. @range 1-200", "1", "200"},
+		{"@range with spaces", "@range 0 - 100", "0", "100"},
+		{"@range with trailing period", "Size. @range 1-50.", "1", "50."},
 	}
 
 	for _, tt := range tests {
@@ -203,6 +221,25 @@ func TestSplitRPCComment(t *testing.T) {
 			comment:    "",
 			wantDesc:   "",
 			wantErrors: nil,
+		},
+		// @-prefix syntax
+		{
+			name:     "@error annotations",
+			comment:  "Update an item. @error NOT_FOUND if the item does not exist. @error INVALID_ARGUMENT if the name is empty.",
+			wantDesc: "Update an item.",
+			wantErrors: []ProtoError{
+				{Code: "NOT_FOUND", Description: "The item does not exist."},
+				{Code: "INVALID_ARGUMENT", Description: "The name is empty."},
+			},
+		},
+		{
+			name:     "mixed @error and Errors:",
+			comment:  "Process request. @error NOT_FOUND if missing. Errors: ALREADY_EXISTS if duplicate.",
+			wantDesc: "Process request.",
+			wantErrors: []ProtoError{
+				{Code: "NOT_FOUND", Description: "Missing."},
+				{Code: "ALREADY_EXISTS", Description: "Duplicate."},
+			},
 		},
 	}
 

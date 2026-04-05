@@ -108,6 +108,9 @@ func TestGenerateIntegration(t *testing.T) {
 	if !strings.Contains(svcContent, `"CreateItem"`) {
 		t.Error("service data should contain RPC name CreateItem")
 	}
+	if !strings.Contains(svcContent, `"UpdateItem"`) {
+		t.Error("service data should contain RPC name UpdateItem")
+	}
 
 	// Verify bug #1 fix: HTML chars are NOT escaped
 	if strings.Contains(svcContent, `\u003c`) {
@@ -126,6 +129,31 @@ func TestGenerateIntegration(t *testing.T) {
 	}
 	if strings.Contains(svcContent, `Range:`) {
 		t.Error("service data descriptions should not contain Range: (should be stripped)")
+	}
+
+	// Verify Phase 3: @-prefix annotations are stripped from descriptions
+	if strings.Contains(svcContent, `@required`) {
+		t.Error("service data descriptions should not contain @required (should be stripped)")
+	}
+	if strings.Contains(svcContent, `@default`) {
+		t.Error("service data descriptions should not contain @default (should be stripped)")
+	}
+	if strings.Contains(svcContent, `@range`) {
+		t.Error("service data descriptions should not contain @range (should be stripped)")
+	}
+
+	// Verify Phase 3: @error annotations produce error entries for UpdateItem
+	if !strings.Contains(svcContent, `"NOT_FOUND"`) {
+		t.Error("service data should contain NOT_FOUND error code from @error annotation")
+	}
+	if !strings.Contains(svcContent, `"UpdateItem"`) {
+		t.Error("service data should contain UpdateItem RPC")
+	}
+
+	// Verify Phase 3: @required fields are marked required
+	// The UpdateItem.id field uses @required — verify it shows required: true
+	if !strings.Contains(svcContent, `"required": true`) {
+		t.Error("service data should have required: true for @required fields")
 	}
 
 	// Verify enum data file contains expected content

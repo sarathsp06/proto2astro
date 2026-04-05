@@ -58,6 +58,22 @@ message GetItemResponse {
   ItemDetail item = 1;
 }
 
+// UpdateItemRequest uses the new @-prefix annotation style.
+message UpdateItemRequest {
+  // @required The item ID to update. @example "item-456"
+  string id = 1;
+  // New name for the item. @default "Untitled" @example "Updated Item"
+  string name = 2;
+  // New count value. @range 1-200 @default 100 @example 42
+  int32 count = 3;
+}
+
+// UpdateItemResponse is the response from updating an item.
+message UpdateItemResponse {
+  // The updated item.
+  ItemDetail item = 1;
+}
+
 // ItemService manages items.
 service ItemService {
   // CreateItem creates a new item.
@@ -67,4 +83,9 @@ service ItemService {
 
   // GetItem retrieves an existing item by ID.
   rpc GetItem(GetItemRequest) returns (GetItemResponse);
+
+  // UpdateItem modifies an existing item.
+  // @error NOT_FOUND if the item does not exist.
+  // @error INVALID_ARGUMENT if the name is empty.
+  rpc UpdateItem(UpdateItemRequest) returns (UpdateItemResponse);
 }

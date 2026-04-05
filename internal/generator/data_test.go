@@ -33,6 +33,32 @@ func TestCleanDescription(t *testing.T) {
 			"Page size. Range: 1-100.",
 			"Page size.",
 		},
+		// @-prefix annotations
+		{
+			"strips @required from description",
+			"@required The item ID to update.",
+			"The item ID to update.",
+		},
+		{
+			"strips @default from description",
+			"Name for the item. @default Untitled",
+			"Name for the item.",
+		},
+		{
+			"strips @range from description",
+			"Count value. @range 1-200",
+			"Count value.",
+		},
+		{
+			"strips @deprecated from description",
+			"@deprecated Use new_field instead.",
+			"",
+		},
+		{
+			"strips multiple @-prefix annotations",
+			"@required Count. @range 1-100 @default 50 @example 25",
+			"Count.",
+		},
 	}
 
 	for _, tt := range tests {

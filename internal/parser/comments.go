@@ -9,12 +9,20 @@ import (
 )
 
 var (
+	// Legacy (colon-suffix) patterns.
 	errorLineRE  = regexp.MustCompile(`^Errors?:\s+([A-Z_]+)\s+(?:if\s+)?(.+?)\.?$`)
 	requiredRE   = regexp.MustCompile(`\bRequired\b`)
 	deprecatedRE = regexp.MustCompile(`(?i)^Deprecated:`)
 	defaultRE    = regexp.MustCompile(`Default:\s*(.+?)(?:\.|$)`)
 	rangeRE      = regexp.MustCompile(`Range:\s*(\S+)\s*-\s*(\S+)`)
 	exampleRE    = regexp.MustCompile(`@example\s+(.+)`)
+
+	// New @-prefix patterns (consistent annotation style).
+	atRequiredRE   = regexp.MustCompile(`@required\b`)
+	atDeprecatedRE = regexp.MustCompile(`(?i)^@deprecated\b`)
+	atDefaultRE    = regexp.MustCompile(`@default\s+(\S+)`)
+	atRangeRE      = regexp.MustCompile(`@range\s+(\S+)\s*-\s*(\S+)`)
+	atErrorNormRE  = regexp.MustCompile(`@error\s+`)
 )
 
 // extractComment joins leading comment lines into a single string.
@@ -63,28 +71,37 @@ func joinCommentLines(lines []string) string {
 	return strings.Join(result, " ")
 }
 
-// extractRequired checks if a comment contains the Required keyword.
+// extractRequired checks if a comment contains the Required keyword or @required annotation.
 func extractRequired(comment string) bool {
-	return requiredRE.MatchString(comment)
+	return requiredRE.MatchString(comment) || atRequiredRE.MatchString(comment)
 }
 
-// extractDeprecated checks if a comment starts with Deprecated:.
+// extractDeprecated checks if a comment starts with Deprecated: or @deprecated.
 func extractDeprecated(comment string) bool {
-	return deprecatedRE.MatchString(strings.TrimSpace(comment))
+	trimmed := strings.TrimSpace(comment)
+	return deprecatedRE.MatchString(trimmed) || atDeprecatedRE.MatchString(trimmed)
 }
 
-// extractDefault extracts a "Default: VALUE" pattern from a comment.
+// extractDefault extracts a "Default: VALUE" or "@default VALUE" pattern from a comment.
 func extractDefault(comment string) string {
 	m := defaultRE.FindStringSubmatch(comment)
+	if m != nil {
+		return strings.TrimSpace(m[1])
+	}
+	m = atDefaultRE.FindStringSubmatch(comment)
 	if m != nil {
 		return strings.TrimSpace(m[1])
 	}
 	return ""
 }
 
-// extractRange extracts a "Range: MIN-MAX" pattern from a comment.
+// extractRange extracts a "Range: MIN-MAX" or "@range MIN-MAX" pattern from a comment.
 func extractRange(comment string) (min, max string) {
 	m := rangeRE.FindStringSubmatch(comment)
+	if m != nil {
+		return strings.TrimSpace(m[1]), strings.TrimSpace(m[2])
+	}
+	m = atRangeRE.FindStringSubmatch(comment)
 	if m != nil {
 		return strings.TrimSpace(m[1]), strings.TrimSpace(m[2])
 	}
@@ -112,7 +129,11 @@ func extractExample(comment string) any {
 }
 
 // splitRPCComment separates the description from error code patterns.
+// Supports both "Errors: CODE desc" and "@error CODE desc" syntax.
 func splitRPCComment(comment string) (string, []ProtoError) {
+	// Normalize @error to Errors: for unified processing.
+	comment = atErrorNormRE.ReplaceAllString(comment, "Errors: ")
+
 	var errors []ProtoError
 	var descParts []string
 

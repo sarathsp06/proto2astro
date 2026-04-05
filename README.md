@@ -29,7 +29,7 @@ proto2astro generates a complete [Astro Starlight](https://starlight.astro.build
 - **Two-column layout** — fields on the left, curl examples on the right
 - **ConnectRPC-native** — curl examples use HTTP POST + JSON with correct service paths
 - **Buf support** — discovers protos from `buf.yaml` workspaces automatically
-- **Rich proto comments** — extracts `Required`, `Deprecated:`, `Default:`, `Range:`, `Errors:`, `@example`
+- **Rich proto comments** — extracts `@required`, `@deprecated`, `@default`, `@range`, `@error`, `@example`
 
 ## Install
 
@@ -291,38 +291,39 @@ custom_pages:
 
 ## Proto Comment Conventions
 
-Write comments in your `.proto` files and proto2astro picks them up automatically. All conventions are optional — plain `//` comments work as descriptions.
+Write comments in your `.proto` files and proto2astro picks them up automatically. All annotations use the `@` prefix for consistency.
 
 ```protobuf
 // Create a new user account.
-// The email must be unique across the system.
-// Errors: ALREADY_EXISTS if the email is taken.
+// @error ALREADY_EXISTS if the email is taken.
 rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
 
 message CreateUserRequest {
-  // Required. The user's email address.
+  // @required The user's email address.
   // @example "alice@example.com"
   string email = 1;
 
-  // Display name. Default: "Anonymous".
+  // Display name. @default "Anonymous"
   string display_name = 2;
 
-  // Number of invites to pre-allocate. Range: 0-100.
+  // Number of invites to pre-allocate. @range 0-100
   int32 invite_count = 3;
 
-  // Deprecated: Use display_name instead.
+  // @deprecated Use display_name instead.
   string name = 4;
 }
 ```
 
 | Annotation | What it does |
 |---|---|
-| `Required.` | Marks the field as required |
-| `Deprecated:` | Shows deprecation notice with reason |
-| `Default:` | Displays the default value |
-| `Range:` | Shows allowed range constraint |
-| `Errors:` | Lists error codes on the RPC |
-| `@example` | Uses the value in generated curl examples |
+| `@required` | Marks the field as required |
+| `@deprecated` | Shows deprecation notice; field excluded from docs |
+| `@default VALUE` | Displays the default value |
+| `@range MIN-MAX` | Shows allowed range constraint |
+| `@error CODE desc` | Lists error codes on the RPC |
+| `@example VALUE` | Uses the value in generated curl examples |
+
+> **Legacy syntax** — `Required.`, `Deprecated:`, `Default:`, `Range:`, and `Errors:` patterns are still supported for backward compatibility.
 
 ## Customizing the Site
 

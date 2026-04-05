@@ -128,7 +128,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   </Card>
   <Card title="Comment-driven" icon="pencil">
     Rich documentation is extracted directly from your proto comments using
-    conventions like ` + "`Required`" + `, ` + "`@example`" + `, ` + "`Errors:`" + `, ` + "`Default:`" + `, and ` + "`Range:`" + `.
+    annotations like ` + "`@required`" + `, ` + "`@example`" + `, ` + "`@error`" + `, ` + "`@default`" + `, and ` + "`@range`" + `.
   </Card>
 </CardGrid>
 
@@ -173,65 +173,70 @@ Place comments directly above the message, field, RPC, or enum you want to docum
 rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
 ` + "```" + `
 
-## Required Keyword
+## Annotations
 
-Include the word ` + "`Required`" + ` (capital R) anywhere in a field comment to mark it as required:
+All annotations use the ` + "`@`" + ` prefix for consistency, following conventions from Javadoc, JSDoc, and similar systems.
+
+### @required
+
+Mark a field as required:
 
 ` + "```" + `protobuf
-// Required. The URL to deliver webhook events to.
+// @required The URL to deliver webhook events to.
+// @example "https://example.com/webhook"
 string url = 1;
 ` + "```" + `
 
-## Deprecated Detection
+### @deprecated
 
-Fields are marked as deprecated (and excluded from docs) in two ways:
+Mark a field or message as deprecated. Deprecated fields are excluded from generated documentation:
 
-1. The proto ` + "`deprecated`" + ` option:
+` + "```" + `protobuf
+// @deprecated Use new_field instead.
+string old_field = 5;
+` + "```" + `
+
+Fields with the proto ` + "`deprecated`" + ` option are also detected:
 ` + "```" + `protobuf
 string old_field = 5 [deprecated = true];
 ` + "```" + `
 
-2. A comment starting with ` + "`Deprecated:`" + `:
-` + "```" + `protobuf
-// Deprecated: Use new_field instead.
-string old_field = 5;
-` + "```" + `
+### @default
 
-## Default Values
-
-Use the ` + "`Default: VALUE`" + ` pattern to document default values:
+Document a field's default value:
 
 ` + "```" + `protobuf
-// Maximum number of retry attempts. Default: 5.
+// Maximum number of retry attempts. @default 5
 int32 max_retries = 3;
 ` + "```" + `
 
-## Range Constraints
+### @range
 
-Use the ` + "`Range: MIN-MAX`" + ` pattern to document valid ranges:
+Document valid value ranges:
 
 ` + "```" + `protobuf
-// Number of items per page. Range: 1-100. Default: 50.
+// Number of items per page. @range 1-100 @default 50
 int32 page_size = 2;
 ` + "```" + `
 
-## Error Codes
+### @error
 
-Document RPC error codes using the ` + "`Errors: CODE description`" + ` pattern in RPC comments:
+Document RPC error codes in RPC comments:
 
 ` + "```" + `protobuf
 // RegisterWebhook creates a new webhook subscription.
-// Errors: ALREADY_EXISTS if a webhook with the same URL already exists.
-// Errors: INVALID_ARGUMENT if the URL is malformed.
+// @error ALREADY_EXISTS if a webhook with the same URL already exists.
+// @error INVALID_ARGUMENT if the URL is malformed.
 rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
 ` + "```" + `
 
-## @example Annotation
+### @example
 
-Provide example values for fields using ` + "`@example`" + `. These are used to auto-generate curl commands and response JSON:
+Provide example values for fields. These are used to auto-generate curl commands and response JSON:
 
 ` + "```" + `protobuf
-// The webhook endpoint URL. Required. @example "https://example.com/webhook"
+// @required The webhook endpoint URL.
+// @example "https://example.com/webhook"
 string url = 1;
 
 // Maximum retry attempts. @example 5
@@ -242,6 +247,41 @@ bool active = 3;
 ` + "```" + `
 
 JSON values are parsed automatically. If parsing fails, the value is treated as a string.
+
+## Complete Example
+
+` + "```" + `protobuf
+// Create a new user account.
+// @error ALREADY_EXISTS if the email is taken.
+rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+message CreateUserRequest {
+  // @required The user's email address.
+  // @example "alice@example.com"
+  string email = 1;
+
+  // Display name. @default "Anonymous"
+  string display_name = 2;
+
+  // Number of invites to pre-allocate. @range 0-100
+  int32 invite_count = 3;
+
+  // @deprecated Use display_name instead.
+  string name = 4;
+}
+` + "```" + `
+
+## Legacy Syntax
+
+The following legacy patterns are still supported for backward compatibility:
+
+| Legacy | Preferred |
+|--------|-----------|
+| ` + "`Required.`" + ` / ` + "`Required `" + ` | ` + "`@required`" + ` |
+| ` + "`Deprecated: reason`" + ` | ` + "`@deprecated reason`" + ` |
+| ` + "`Default: VALUE.`" + ` | ` + "`@default VALUE`" + ` |
+| ` + "`Range: MIN-MAX`" + ` | ` + "`@range MIN-MAX`" + ` |
+| ` + "`Errors: CODE desc`" + ` | ` + "`@error CODE desc`" + ` |
 `
 
 // generatePages generates MDX stubs, index page, and comment guide.

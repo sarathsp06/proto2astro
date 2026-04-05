@@ -14,8 +14,14 @@ import (
 
 // Regex patterns for annotation stripping in cleanDescription.
 var (
+	// Legacy (colon-suffix) patterns.
 	cleanDefaultRE = regexp.MustCompile(`Default:\s*\S+\.?`)
 	cleanRangeRE   = regexp.MustCompile(`Range:\s*\S+\s*-\s*\S+`)
+
+	// New @-prefix patterns.
+	cleanAtRequiredRE = regexp.MustCompile(`@required\b\s*`)
+	cleanAtDefaultRE  = regexp.MustCompile(`@default\s+\S+`)
+	cleanAtRangeRE    = regexp.MustCompile(`@range\s+\S+\s*-\s*\S+`)
 )
 
 // generateDataFiles generates TypeScript data files (one per service + one per enum) in outDir/src/data/api/.
@@ -307,19 +313,29 @@ func shouldFlatten(typeName string, entityTypes []string) bool {
 }
 
 // cleanDescription strips annotation patterns from the visible description.
-// Annotations like @example, Default:, and Range: are extracted as structured
-// data elsewhere; leaving them in the description creates redundant noise.
+// Annotations like @example, @required, @default, @range, @deprecated, and
+// their legacy equivalents (Required., Default:, Range:) are extracted as
+// structured data elsewhere; leaving them in the description creates redundant noise.
 func cleanDescription(desc string) string {
 	desc = strings.TrimSpace(desc)
+	// Legacy bare-word Required prefix.
 	desc = strings.TrimPrefix(desc, "Required. ")
 	desc = strings.TrimPrefix(desc, "Required ")
-	// Strip @example and everything after it (usually last in comment)
+	// Strip @example and everything after it (usually last in comment).
 	if idx := strings.Index(desc, "@example"); idx >= 0 {
 		desc = desc[:idx]
 	}
-	// Strip Default: VALUE. and Range: MIN-MAX patterns
+	// Strip @deprecated and everything after it (reason text follows).
+	if idx := strings.Index(desc, "@deprecated"); idx >= 0 {
+		desc = desc[:idx]
+	}
+	// Legacy colon-suffix patterns.
 	desc = cleanDefaultRE.ReplaceAllString(desc, "")
 	desc = cleanRangeRE.ReplaceAllString(desc, "")
+	// New @-prefix patterns.
+	desc = cleanAtRequiredRE.ReplaceAllString(desc, "")
+	desc = cleanAtDefaultRE.ReplaceAllString(desc, "")
+	desc = cleanAtRangeRE.ReplaceAllString(desc, "")
 	return strings.TrimSpace(desc)
 }
 
