@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-05
+
+### Added
+
+- Comprehensive test suite for parser and generator with golden file tests
+- Consistent `@`-prefix annotation syntax (`@required`, `@deprecated`, `@default`, `@range`, `@error`, `@example`)
+- Multi-line fenced `@example` blocks for complex JSON/object examples
+- `entity_examples` config for type-level example values
+- Scaffold config options (`landing_page`, `comment_guide`) to control generated pages
+- Route collision detection to prevent conflicting page paths
+- Deterministic output — sorted map iterations for reproducible generation
+- MIT license
+
+### Fixed
+
+- HTML encoding in TypeScript data files (ampersands, angle brackets no longer escaped)
+- Annotation markers leaking into rendered descriptions
+- Recursive enum detection in nested message types
+
+### Changed
+
+- Sidebar generation rewritten as JSON config with scaffold-only behavior and custom page paths
+- README restructured around command lifecycle
+
+### Removed
+
+- Legacy annotation syntax (bare `Required`, `Deprecated:`, `Default:`, `Range:`, `Errors:`) — only `@`-prefix annotations are now supported
+
+## [0.3.0] - 2025-12-15
+
 ### Added
 
 - Cobra CLI with `init`, `generate`, `install`, `build`, `dev`, and `preview` commands
