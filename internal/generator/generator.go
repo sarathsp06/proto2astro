@@ -64,7 +64,8 @@ func Generate(cfg *config.Config) error {
 	totalMsgs := 0
 	totalEnums := 0
 	streamingRPCs := 0
-	for _, pkg := range result.Packages {
+	for _, pkgName := range sortedPackageNames(result) {
+		pkg := result.Packages[pkgName]
 		totalSvcs += len(pkg.Services)
 		totalMsgs += len(pkg.Messages)
 		totalEnums += len(pkg.Enums)

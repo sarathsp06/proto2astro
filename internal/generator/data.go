@@ -31,9 +31,16 @@ func generateDataFiles(result *parser.ParseResult, cfg *config.Config, outDir st
 		return fmt.Errorf("mkdir data dir: %w", err)
 	}
 
-	for _, pkg := range result.Packages {
-		for _, svc := range pkg.Services {
-			overlay := cfg.Services[svc.Name]
+	// Sort package names for deterministic output.
+	pkgNames := sortedPackageNames(result)
+	for _, pkgName := range pkgNames {
+		pkg := result.Packages[pkgName]
+
+		// Sort service names for deterministic file generation order.
+		svcNames := sortedServiceNames(pkg, cfg.ServiceOrder)
+		for _, name := range svcNames {
+			svc := pkg.Services[name]
+			overlay := cfg.Services[name]
 			ts := buildTSService(svc, pkg, cfg, overlay)
 			content, err := marshalServiceTS(ts)
 			if err != nil {
@@ -46,8 +53,10 @@ func generateDataFiles(result *parser.ParseResult, cfg *config.Config, outDir st
 			}
 		}
 
-		// Generate enum data files
-		for _, enum := range pkg.Enums {
+		// Generate enum data files (sorted for deterministic output).
+		enumNames := sortedEnumNames(pkg)
+		for _, name := range enumNames {
+			enum := pkg.Enums[name]
 			ts := buildTSEnum(enum, pkg)
 			content, err := marshalEnumTS(ts)
 			if err != nil {
@@ -385,4 +394,15 @@ func sortedServiceNames(pkg *parser.ProtoPackage, serviceOrder []string) []strin
 	result = append(result, remaining...)
 
 	return result
+}
+
+// sortedPackageNames returns package names sorted alphabetically for
+// deterministic iteration over result.Packages.
+func sortedPackageNames(result *parser.ParseResult) []string {
+	names := make([]string, 0, len(result.Packages))
+	for name := range result.Packages {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

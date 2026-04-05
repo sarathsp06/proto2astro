@@ -517,3 +517,78 @@ func TestScaffoldConfigHelpers(t *testing.T) {
 		})
 	}
 }
+
+// TestGenerateIntegration_DeterministicOutput verifies that generating the same
+// proto files twice produces identical output (Phase 6: deterministic output).
+func TestGenerateIntegration_DeterministicOutput(t *testing.T) {
+	protoFile := filepath.Join(testdataDir(t), "basic.proto")
+	result, err := parser.ParseFiles([]string{protoFile})
+	if err != nil {
+		t.Fatalf("ParseFiles() error = %v", err)
+	}
+
+	generate := func() map[string]string {
+		outDir := t.TempDir()
+		cfg := &config.Config{
+			Title:       "Test API",
+			Description: "Test API docs",
+			OutDir:      outDir,
+			Proto:       config.ProtoInput{Paths: []string{protoFile}},
+			EntityTypes: []string{"ItemDetail"},
+		}
+		cfg.ApplyDefaults()
+
+		if err := Init(outDir, true); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
+		if err := generateDataFiles(result, cfg, outDir); err != nil {
+			t.Fatalf("generateDataFiles() error = %v", err)
+		}
+		if err := generatePages(result, cfg, outDir); err != nil {
+			t.Fatalf("generatePages() error = %v", err)
+		}
+		if err := generateProto2AstroConfig(result, cfg, outDir); err != nil {
+			t.Fatalf("generateProto2AstroConfig() error = %v", err)
+		}
+
+		// Read regenerated files (not scaffold-only)
+		files := map[string]string{}
+		for _, rel := range []string{
+			"src/data/api/item-service.ts",
+			"src/data/api/enum-item-status.ts",
+			"src/data/api/enum-priority.ts",
+			"src/content/docs/reference/api/index.md",
+			"src/data/proto2astro-config.json",
+		} {
+			data, err := os.ReadFile(filepath.Join(outDir, rel))
+			if err != nil {
+				t.Fatalf("read %s: %v", rel, err)
+			}
+			files[rel] = string(data)
+		}
+		return files
+	}
+
+	// Generate twice and compare
+	run1 := generate()
+	run2 := generate()
+
+	for path, content1 := range run1 {
+		content2, ok := run2[path]
+		if !ok {
+			t.Errorf("file %s missing in second run", path)
+			continue
+		}
+		if content1 != content2 {
+			t.Errorf("non-deterministic output for %s:\n--- run 1 ---\n%s\n--- run 2 ---\n%s",
+				path, content1[:min(200, len(content1))], content2[:min(200, len(content2))])
+		}
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

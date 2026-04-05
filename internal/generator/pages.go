@@ -309,7 +309,10 @@ func generatePages(result *parser.ParseResult, cfg *config.Config, outDir string
 	var allServices []ServicePageData
 	var allEnums []EnumPageData
 
-	for _, pkg := range result.Packages {
+	// Sort package names for deterministic output.
+	pkgNames := sortedPackageNames(result)
+	for _, pkgName := range pkgNames {
+		pkg := result.Packages[pkgName]
 		svcNames := sortedServiceNames(pkg, cfg.ServiceOrder)
 		for _, name := range svcNames {
 			svc := pkg.Services[name]
