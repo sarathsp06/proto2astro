@@ -1,0 +1,250 @@
+package generator
+
+import (
+	"testing"
+
+	"github.com/sarathsp06/proto2astro/internal/parser"
+)
+
+func TestCleanDescription(t *testing.T) {
+	tests := []struct {
+		name string
+		desc string
+		want string
+	}{
+		{"strips Required. prefix", "Required. The URL.", "The URL."},
+		{"strips Required prefix", "Required The URL.", "The URL."},
+		{"no Required", "The webhook URL.", "The webhook URL."},
+		{"empty", "", ""},
+		{"only whitespace", "   ", ""},
+		// NOTE: Current behavior — @example, Default:, Range: are NOT stripped.
+		// These will be updated in Phase 2 when cleanDescription is fixed.
+		{
+			"leaves @example in description",
+			`The item name. @example "test"`,
+			`The item name. @example "test"`,
+		},
+		{
+			"leaves Default: in description",
+			"Max retries. Default: 5.",
+			"Max retries. Default: 5.",
+		},
+		{
+			"leaves Range: in description",
+			"Page size. Range: 1-100.",
+			"Page size. Range: 1-100.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cleanDescription(tt.desc)
+			if got != tt.want {
+				t.Errorf("cleanDescription(%q) = %q, want %q", tt.desc, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestShouldFlatten(t *testing.T) {
+	entityTypes := []string{"ItemDetail", "UserProfile"}
+
+	tests := []struct {
+		name        string
+		typeName    string
+		entityTypes []string
+		want        bool
+	}{
+		{"non-entity type", "CreateItemRequest", entityTypes, true},
+		{"entity type", "ItemDetail", entityTypes, false},
+		{"another entity", "UserProfile", entityTypes, false},
+		{"empty entity list", "ItemDetail", nil, true},
+		{"empty type name", "", entityTypes, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldFlatten(tt.typeName, tt.entityTypes)
+			if got != tt.want {
+				t.Errorf("shouldFlatten(%q, %v) = %v, want %v",
+					tt.typeName, tt.entityTypes, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestToKebab(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"PascalCase", "ItemService", "item-service"},
+		{"single word", "Item", "item"},
+		{"already lowercase", "item", "item"},
+		{"multiple caps", "HTTPService", "h-t-t-p-service"},
+		{"empty", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := toKebab(tt.in)
+			if got != tt.want {
+				t.Errorf("toKebab(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMessageUsesEnum(t *testing.T) {
+	// Direct enum usage — should be found
+	msg := &parser.ProtoMessage{
+		Name: "CreateItemRequest",
+		Fields: []parser.ProtoField{
+			{Name: "name", Type: "string", RawType: "string"},
+			{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
+		},
+	}
+
+	if !messageUsesEnum(msg, "ItemStatus") {
+		t.Error("messageUsesEnum should find direct enum usage")
+	}
+	if messageUsesEnum(msg, "Priority") {
+		t.Error("messageUsesEnum should not find unused enum")
+	}
+
+	// Nested enum usage — current behavior: NOT found (bug #3)
+	// The enum is inside a nested message, but messageUsesEnum only checks direct fields.
+	innerMsg := &parser.ProtoMessage{
+		Name: "ItemDetail",
+		Fields: []parser.ProtoField{
+			{Name: "id", Type: "string", RawType: "string"},
+			{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
+		},
+	}
+	outerMsg := &parser.ProtoMessage{
+		Name: "GetItemResponse",
+		Fields: []parser.ProtoField{
+			{Name: "item", Type: "ItemDetail", RawType: "ItemDetail", IsMessage: true},
+		},
+	}
+
+	// outerMsg does not directly use the enum — messageUsesEnum returns false
+	// This is the known bug #3 that will be fixed in Phase 2.
+	if messageUsesEnum(outerMsg, "ItemStatus") {
+		t.Error("messageUsesEnum (current behavior) should NOT find nested enum usage")
+	}
+
+	_ = innerMsg // will be used in Phase 2 test for recursive check
+}
+
+func TestFindEnumUsage(t *testing.T) {
+	pkg := &parser.ProtoPackage{
+		Name: "testpkg.v1",
+		Services: map[string]*parser.ProtoService{
+			"ItemService": {
+				Name: "ItemService",
+				RPCs: []parser.ProtoRPC{
+					{
+						Name:         "CreateItem",
+						RequestType:  "CreateItemRequest",
+						ResponseType: "CreateItemResponse",
+					},
+				},
+			},
+		},
+		Messages: map[string]*parser.ProtoMessage{
+			"CreateItemRequest": {
+				Name: "CreateItemRequest",
+				Fields: []parser.ProtoField{
+					{Name: "priority", Type: "Priority", RawType: "Priority", IsEnum: true},
+				},
+			},
+			"CreateItemResponse": {
+				Name: "CreateItemResponse",
+				Fields: []parser.ProtoField{
+					{Name: "item", Type: "ItemDetail", RawType: "ItemDetail", IsMessage: true},
+				},
+			},
+			"ItemDetail": {
+				Name: "ItemDetail",
+				Fields: []parser.ProtoField{
+					{Name: "status", Type: "ItemStatus", RawType: "ItemStatus", IsEnum: true},
+				},
+			},
+		},
+		Enums: map[string]*parser.ProtoEnum{
+			"Priority":   {Name: "Priority"},
+			"ItemStatus": {Name: "ItemStatus"},
+		},
+	}
+
+	// Priority is used directly in CreateItemRequest — should be found
+	priorityUsage := findEnumUsage("Priority", pkg)
+	if len(priorityUsage) != 1 || priorityUsage[0] != "ItemService" {
+		t.Errorf("findEnumUsage(Priority) = %v, want [ItemService]", priorityUsage)
+	}
+
+	// ItemStatus is used in ItemDetail (nested in CreateItemResponse) —
+	// current behavior: NOT found because messageUsesEnum is non-recursive (bug #3).
+	// This will be updated in Phase 2 when the fix is applied.
+	statusUsage := findEnumUsage("ItemStatus", pkg)
+	if len(statusUsage) != 0 {
+		t.Errorf("findEnumUsage(ItemStatus) = %v, want [] (current buggy behavior)", statusUsage)
+	}
+}
+
+func TestSortedServiceNames(t *testing.T) {
+	pkg := &parser.ProtoPackage{
+		Services: map[string]*parser.ProtoService{
+			"Zebra": {Name: "Zebra"},
+			"Alpha": {Name: "Alpha"},
+			"Bravo": {Name: "Bravo"},
+		},
+	}
+
+	// No ordering specified — alphabetical
+	got := sortedServiceNames(pkg, nil)
+	want := []string{"Alpha", "Bravo", "Zebra"}
+	if len(got) != len(want) {
+		t.Fatalf("sortedServiceNames() len = %d, want %d", len(got), len(want))
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("sortedServiceNames()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	// With explicit ordering
+	got = sortedServiceNames(pkg, []string{"Bravo", "Zebra"})
+	want = []string{"Bravo", "Zebra", "Alpha"}
+	if len(got) != len(want) {
+		t.Fatalf("sortedServiceNames(ordered) len = %d, want %d", len(got), len(want))
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Errorf("sortedServiceNames(ordered)[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestFormatPackageLabel(t *testing.T) {
+	tests := []struct {
+		name string
+		pkg  string
+		want string
+	}{
+		{"default package", "_default", "API Reference"},
+		{"dotted package", "webhook.v1", "Webhook V1"},
+		{"single segment", "mypackage", "Mypackage"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatPackageLabel(tt.pkg)
+			if got != tt.want {
+				t.Errorf("formatPackageLabel(%q) = %q, want %q", tt.pkg, got, tt.want)
+			}
+		})
+	}
+}

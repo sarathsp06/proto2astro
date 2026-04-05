@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package testpkg.v1;
+
+// ItemStatus represents the status of an item.
+enum ItemStatus {
+  // Unspecified status.
+  ITEM_STATUS_UNSPECIFIED = 0;
+  // Item is active.
+  ITEM_STATUS_ACTIVE = 1;
+  // Item is archived.
+  ITEM_STATUS_ARCHIVED = 2;
+}
+
+// Priority level for items.
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_LOW = 1;
+  PRIORITY_HIGH = 2;
+}
+
+// ItemDetail is an entity type with a nested enum reference.
+message ItemDetail {
+  // Unique identifier.
+  string id = 1;
+  // Current status of the item.
+  ItemStatus status = 2;
+}
+
+// CreateItemRequest is the request to create an item.
+message CreateItemRequest {
+  // Required. The name of the item. @example "My Item"
+  string name = 1;
+  // A description with HTML chars: values < 100 & > 0.
+  // Default: 50. Range: 1-100.
+  int32 count = 2;
+  // Priority level for the item.
+  Priority priority = 3;
+  // Optional tags for the item. @example ["alpha", "beta"]
+  repeated string tags = 4;
+}
+
+// CreateItemResponse is the response from creating an item.
+message CreateItemResponse {
+  // The created item.
+  ItemDetail item = 1;
+}
+
+// GetItemRequest is the request to get an item.
+message GetItemRequest {
+  // Required. The item ID. @example "item-123"
+  string id = 1;
+}
+
+// GetItemResponse is the response from getting an item.
+message GetItemResponse {
+  // The item detail.
+  ItemDetail item = 1;
+}
+
+// ItemService manages items.
+service ItemService {
+  // CreateItem creates a new item.
+  // Errors: ALREADY_EXISTS if an item with the same name exists.
+  // Errors: INVALID_ARGUMENT if the name is empty.
+  rpc CreateItem(CreateItemRequest) returns (CreateItemResponse);
+
+  // GetItem retrieves an existing item by ID.
+  rpc GetItem(GetItemRequest) returns (GetItemResponse);
+}
